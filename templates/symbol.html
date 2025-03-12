@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}{{ symbol }} Signals | Trading Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">{{ symbol }} Signals</h1>
+        <div>
+            <form class="d-flex" method="get">
+                <select class="form-select me-2" name="days" onchange="this.form.submit()">
+                    <option value="1" {% if days == 1 %}selected{% endif %}>Last 24 hours</option>
+                    <option value="3" {% if days == 3 %}selected{% endif %}>Last 3 days</option>
+                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                </select>
+                <a href="{{ url_for('scan') }}?symbol={{ symbol }}" class="btn btn-primary">
+                    <i class="fas fa-sync-alt"></i> New Scan
+                </a>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Stats cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="stats-number">{{ summary.total_signals }}</div>
+                    <div class="stats-label">Total Signals</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="stats-number buy-signal">{{ summary.buy_signals }}</div>
+                    <div class="stats-label">Buy Signals</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="stats-number sell-signal">{{ summary.sell_signals }}</div>
+                    <div class="stats-label">Sell Signals</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="stats-number">
+                        <span class="high-confidence">{{ summary.high_confidence }}</span> / 
+                        <span class="medium-confidence">{{ summary.medium_confidence }}</span> / 
+                        <span class="low-confidence">{{ summary.low_confidence }}</span>
+                    </div>
+                    <div class="stats-label">High/Med/Low Confidence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Signal timeline -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-history"></i> Signal History for {{ symbol }}
+                </div>
+                <div class="card-body">
+                    {% if signals %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>Pattern</th>
+                                    <th>Confidence</th>
+                                    <th>Entry</th>
+                                    <th>Stop Loss</th>
+                                    <th>Take Profit</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for signal in signals %}
+                                <tr>
+                                    <td>{{ signal.date | format_date }}</td>
+                                    <td>
+                                        {% if signal.suggested_action|lower == 'buy' %}
+                                        <span class="badge bg-success action-badge">Buy</span>
+                                        {% elif signal.suggested_action|lower == 'sell' %}
+                                        <span class="badge bg-danger action-badge">Sell</span>
+                                        {% else %}
+                                        <span class="badge bg-warning action-badge">Hold</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ signal.pattern_identified }}</td>
+                                    <td>
+                                        {% if signal.pattern_confidence|lower == 'high' %}
+                                        <span class="high-confidence">{{ signal.pattern_confidence }}</span>
+                                        {% elif signal.pattern_confidence|lower == 'medium' %}
+                                        <span class="medium-confidence">{{ signal.pattern_confidence }}</span>
+                                        {% else %}
+                                        <span class="low-confidence">{{ signal.pattern_confidence }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ signal.entry_price }}</td>
+                                    <td class="text-danger">{{ signal.stop_loss }}</td>
+                                    <td class="text-success">{{ signal.take_profit }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#signalModal{{ loop.index }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Signal detail modal -->
+                                <div class="modal fade" id="signalModal{{ loop.index }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">{{ symbol }} - {{ signal.date | format_date }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <h6>Signal Details</h6>
+                                                        <ul class="list-group mb-3">
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Action:</span>
+                                                                <span class="{% if signal.suggested_action|lower == 'buy' %}buy-signal{% elif signal.suggested_action|lower == 'sell' %}sell-signal{% else %}hold-signal{% endif %}">
+                                                                    {{ signal.suggested_action }}
+                                                                </span>
+                                                            </li>
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Pattern:</span>
+                                                                <span>{{ signal.pattern_identified }}</span>
+                                                            </li>
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Confidence:</span>
+                                                                <span class="{% if signal.pattern_confidence|lower == 'high' %}high-confidence{% elif signal.pattern_confidence|lower == 'medium' %}medium-confidence{% else %}low-confidence{% endif %}">
+                                                                    {{ signal.pattern_confidence }}
+                                                                </span>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Price Targets</h6>
+                                                        <ul class="list-group mb-3">
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Entry Price:</span>
+                                                                <span>{{ signal.entry_price }}</span>
+                                                            </li>
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Stop Loss:</span>
+                                                                <span class="text-danger">{{ signal.stop_loss }}</span>
+                                                            </li>
+                                                            <li class="list-group-item d-flex justify-content-between">
+                                                                <span>Take Profit:</span>
+                                                                <span class="text-success">{{ signal.take_profit }}</span>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                
+                                                <h6>Reasoning</h6>
+                                                <div class="card">
+                                                    <div class="card-body">
+                                                        <p>{{ signal.reasoning|default('No reasoning provided.') }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center">No signals found for {{ symbol }} in the selected time period.</p>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('scan') }}?symbol={{ symbol }}" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Generate New Signal
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
