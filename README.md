@@ -11,27 +11,72 @@ This project fetches market data from Yahoo Finance, performs technical analysis
 ```
 trading-signals-project/
 │
-├── data/                   # Data storage
-│   ├── raw/                # Raw data from Yahoo Finance
-│   └── processed/          # Data with technical indicators
+├── .env                        # Environment variables (API keys)
 │
-├── signals/                # Trading signals
-│   ├── prompts/            # OpenAI prompts
-│   └── outputs/            # OpenAI signal outputs
+├── .gitignore                  # Git ignore file (ignores .env)
 │
-├── logs/                   # Logs directory
+├── data/                       # Data storage and fetching
+│   ├── __init__.py
+│   └── tradingview.py          # Wrapper around Yahoo Finance data fetcher
 │
-├── src/                    # Source code
-│   ├── data/               # Data fetching and processing
-│   ├── analysis/           # Technical analysis
-│   ├── signals/            # Signal generation
-│   ├── execution/          # Trade execution
-│   └── utils/              # Utilities
+├── logs/                       # Logs directory
 │
-├── main.py                 # Main script
-├── README.md               # This file
-├── requirements.txt        # Dependencies
-└── .env                    # Environment variables (create this)
+├── main.py                     # Enhanced main script with CLI arguments
+│
+├── prompts/                    # OpenAI prompts
+│   ├── __init__.py
+│   └── intraday_prompt.py      # Prompt generator for intraday analysis
+│
+├── requirements.txt            # Dependencies
+│
+├── schedule_runner.py          # Automated scheduling script
+│
+├── setup_dashboard.py          # Dashboard setup script
+│
+├── dashboard.py                # Web dashboard for visualizing signals
+│
+├── signals/                    # Trading signals
+│   ├── __init__.py
+│   └── llm_signals.py          # Updated OpenAI signal generator
+│
+├── src/                        # Source code
+│   ├── __init__.py
+│   │
+│   ├── analysis/               # Technical analysis
+│   │   ├── __init__.py
+│   │   ├── patterns.py         # Candlestick pattern detection
+│   │   └── technical.py        # Technical indicators calculation
+│   │
+│   ├── data/                   # Data processing
+│   │   ├── __init__.py
+│   │   ├── data_processor.py   # Data transformation utilities
+│   │   └── yahoo_fetcher.py    # Yahoo Finance data fetcher
+│   │
+│   ├── execution/              # Trade execution (optional)
+│   │   ├── __init__.py
+│   │   └── alpaca_executor.py  # Alpaca trade execution
+│   │
+│   ├── signals/                # Signal processing
+│   │   ├── __init__.py
+│   │   ├── prompt_generator.py # Advanced prompt generation
+│   │   └── signal_processor.py # Signal processing and filtering
+│   │
+│   ├── test/                   # Test scripts
+│   │   ├── __init__.py
+│   │   └── test_alpaca.py      # Alpaca API tests
+│   │
+│   └── utils/                  # Utilities
+│       ├── __init__.py
+│       ├── config.py           # Configuration settings
+│       ├── file_utils.py       # File operations
+│       └── logger.py           # Logging setup
+│
+└── templates/                  # Dashboard HTML templates
+    ├── base.html               # Base template with layout
+    ├── chart.html              # Charts page
+    ├── index.html              # Dashboard home page
+    ├── scan.html               # Run new scans page
+    └── symbol.html             # Symbol detail page
 ```
 
 ## Features

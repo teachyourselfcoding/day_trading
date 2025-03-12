@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Run New Scan | Trading Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">New Trading Signal Scan</h1>
+    </div>
+    
+    <!-- Scan form card -->
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-search"></i> Generate New Trading Signal
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="symbol" class="form-label">Symbol</label>
+                            <select class="form-select" id="symbol" name="symbol" required>
+                                <option value="">Select a symbol</option>
+                                {% for symbol in symbols %}
+                                <option value="{{ symbol }}" {% if request.args.get('symbol') == symbol %}selected{% endif %}>{{ symbol }}</option>
+                                {% endfor %}
+                                <option value="custom">Custom Symbol...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="customSymbolDiv" style="display: none;">
+                            <label for="customSymbol" class="form-label">Enter Custom Symbol</label>
+                            <input type="text" class="form-control" id="customSymbol" name="customSymbol" placeholder="e.g., TSLA">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="interval" class="form-label">Time Interval</label>
+                            <select class="form-select" id="interval" name="interval">
+                                <option value="1m">1 Minute</option>
+                                <option value="5m" selected>5 Minutes</option>
+                                <option value="15m">15 Minutes</option>
+                                <option value="30m">30 Minutes</option>
+                                <option value="60m">60 Minutes</option>
+                                <option value="1h">1 Hour</option>
+                                <option value="1d">1 Day</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="technical" name="technical" checked>
+                            <label class="form-check-label" for="technical">Include Technical Analysis</label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="patterns" name="patterns" checked>
+                            <label class="form-check-label" for="patterns">Detect Candlestick Patterns</label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sync-alt"></i> Generate Signal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Quick scan for common symbols -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-bolt"></i> Quick Scan
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Generate signals for popular symbols:</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for symbol in symbols %}
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="symbol" value="{{ symbol }}">
+                            <input type="hidden" name="interval" value="15m">
+                            <input type="hidden" name="technical" value="on">
+                            <input type="hidden" name="patterns" value="on">
+                            <button type="submit" class="btn btn-outline-primary">
+                                {{ symbol }}
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Batch scan option -->
+            <div class="card mt-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-layer-group"></i> Batch Scan
+                </div>
+                <div class="card-body">
+                    <p>Run a scan for all common symbols at once:</p>
+                    <form method="post" action="{{ url_for('index') }}">
+                        <input type="hidden" name="batch" value="all">
+                        <input type="hidden" name="interval" value="15m">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-rocket"></i> Scan All Symbols
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show/hide custom symbol input based on selection
+    document.getElementById('symbol').addEventListener('change', function() {
+        const customSymbolDiv = document.getElementById('customSymbolDiv');
+        const customSymbolInput = document.getElementById('customSymbol');
+        
+        if (this.value === 'custom') {
+            customSymbolDiv.style.display = 'block';
+            customSymbolInput.setAttribute('required', 'required');
+        } else {
+            customSymbolDiv.style.display = 'none';
+            customSymbolInput.removeAttribute('required');
+        }
+    });
+    
+    // Handle form submission for custom symbol
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (document.getElementById('symbol').value === 'custom') {
+            const customSymbol = document.getElementById('customSymbol').value.trim();
+            if (customSymbol) {
+                // Set the custom symbol as the value for the symbol field
+                const symbolSelect = document.getElementById('symbol');
+                symbolSelect.innerHTML += `<option value="${customSymbol}" selected>${customSymbol}</option>`;
+            } else {
+                e.preventDefault();
+                alert('Please enter a valid symbol');
+            }
+        }
+    });
+</script>
+{% endblock %}
