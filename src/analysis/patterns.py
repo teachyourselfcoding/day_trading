@@ -1,15 +1,18 @@
 """
-Candlestick pattern detection module.
+Candlestick pattern detection module using TA-Lib.
 """
+import pandas as pd
+import numpy as np
+import talib as ta
 from src.utils.logger import analysis_logger
 
-def detect_candlestick_patterns(bars, lookback=5):
+def detect_candlestick_patterns(bars, lookback=None):
     """
-    Detect candlestick patterns in price data.
+    Detect candlestick patterns in price data using TA-Lib.
     
     Args:
         bars (list): List of price bars with OHLC data
-        lookback (int): Number of bars to look back for pattern detection
+        lookback (int): Ignored for TA-Lib implementation as it uses internal lookback
     
     Returns:
         dict: Dictionary of detected patterns and their descriptions
@@ -18,117 +21,80 @@ def detect_candlestick_patterns(bars, lookback=5):
         analysis_logger.warning("Not enough bars for pattern detection (minimum 3 required)")
         return {}
     
-    # Get the most recent bars within the lookback period
-    recent_bars = bars[-min(lookback, len(bars)):]
+    # Convert to DataFrame for easier processing
+    df = pd.DataFrame(bars)
+    
+    # Make sure columns are numeric and explicitly convert to float64 (double)
+    for col in ['o', 'h', 'l', 'c']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype(np.float64)
+    
+    # Convert columns to numpy arrays for TA-Lib, explicitly as float64
+    open_prices = np.array(df['o'], dtype=np.float64)
+    high = np.array(df['h'], dtype=np.float64)
+    low = np.array(df['l'], dtype=np.float64)
+    close = np.array(df['c'], dtype=np.float64)
+    
+    # Initialize patterns dictionary
     patterns = {}
     
-    # Get the most recent bar for single-candle patterns
-    latest = recent_bars[-1]
+    # Define pattern functions to check
+    pattern_functions = {
+        # Single candle patterns
+        'doji': (ta.CDLDOJI, "A doji candlestick pattern, indicating indecision in the market."),
+        'hammer': (ta.CDLHAMMER, "A hammer pattern, potentially signaling a bottom."),
+        'hanging_man': (ta.CDLHANGINGMAN, "A hanging man pattern, potentially signaling a top."),
+        'shooting_star': (ta.CDLSHOOTINGSTAR, "A shooting star pattern, suggesting a potential bearish reversal."),
+        'inverted_hammer': (ta.CDLINVERTEDHAMMER, "An inverted hammer pattern, potentially signaling a bottom."),
+        
+        # Two candle patterns
+        'engulfing': (ta.CDLENGULFING, "An engulfing pattern, suggesting a potential trend reversal."),
+        'harami': (ta.CDLHARAMI, "A harami pattern, indicating a potential trend reversal."),
+        'harami_cross': (ta.CDLHARAMICROSS, "A harami cross pattern, showing strong reversal potential."),
+        'tweezer_top': (ta.CDLTWEEZERTOP, "A tweezer top pattern, suggesting a bearish reversal."),
+        'tweezer_bottom': (ta.CDLTWEEZERBOTTOM, "A tweezer bottom pattern, suggesting a bullish reversal."),
+        
+        # Three candle patterns
+        'morning_star': (ta.CDLMORNINGSTAR, "A morning star pattern, a strong bullish reversal signal."),
+        'evening_star': (ta.CDLEVENINGSTAR, "An evening star pattern, a strong bearish reversal signal."),
+        'three_white_soldiers': (ta.CDL3WHITESOLDIERS, "Three white soldiers pattern, indicating a strong bullish trend."),
+        'three_black_crows': (ta.CDL3BLACKCROWS, "Three black crows pattern, indicating a strong bearish trend."),
+        'three_inside_up': (ta.CDL3INSIDE, "Three inside up pattern, suggesting a bullish reversal."),
+        'abandoned_baby': (ta.CDLABANDONEDBABY, "Abandoned baby pattern, a strong reversal signal."),
+        
+        # Complex patterns
+        'rising_three': (ta.CDLRISEFALL3METHODS, "Rising three methods pattern, suggesting continuation."),
+        'mat_hold': (ta.CDLMATHOLD, "Mat hold pattern, a bullish continuation pattern."),
+        'kicking': (ta.CDLKICKING, "Kicking pattern, a strong trend reversal signal."),
+        'unique_three_river': (ta.CDLUNIQUE3RIVER, "Unique three river pattern, a bullish reversal pattern."),
+    }
     
-    # Doji Pattern (open and close are almost equal)
-    body_size = abs(latest['o'] - latest['c'])
-    candle_range = latest['h'] - latest['l']
-    
-    if candle_range > 0 and body_size <= 0.1 * candle_range:
-        patterns["doji"] = "The latest candle is a doji, indicating indecision in the market."
-        analysis_logger.debug(f"Detected Doji pattern")
-    
-    # Hammer/Hanging Man Pattern
-    if candle_range > 0:
-        body_size = abs(latest['o'] - latest['c'])
-        lower_wick = min(latest['o'], latest['c']) - latest['l']
-        upper_wick = latest['h'] - max(latest['o'], latest['c'])
+    # Check each pattern
+    for pattern_name, (pattern_func, description) in pattern_functions.items():
+        result = pattern_func(open_prices, high, low, close)
         
-        if (body_size <= 0.3 * candle_range and 
-            lower_wick >= 2 * body_size and 
-            upper_wick <= 0.1 * candle_range):
+        # TA-Lib returns an array of zeros and non-zeros
+        # Non-zero values (usually +100 or -100) indicate pattern detected at that index
+        # +100 typically means bullish pattern, -100 means bearish
+        
+        # Check if pattern was detected in the most recent few bars
+        recent_bars = min(5, len(result))
+        recent_result = result[-recent_bars:]
+        
+        if np.any(recent_result != 0):
+            # Get the index of the most recent detection
+            last_index = len(result) - 1 - np.argmax(recent_result[::-1] != 0)
             
-            if latest['c'] > latest['o']:  # Bullish (green) candle
-                patterns["hammer"] = "The latest candle is a hammer, potentially signaling a bottom."
-                analysis_logger.debug(f"Detected Hammer pattern")
-            else:  # Bearish (red) candle
-                patterns["hanging_man"] = "The latest candle is a hanging man, potentially signaling a top."
-                analysis_logger.debug(f"Detected Hanging Man pattern")
-    
-    # Two-candle patterns (if we have at least 2 candles)
-    if len(recent_bars) >= 2:
-        prev = recent_bars[-2]
-        curr = recent_bars[-1]
-        
-        # Bullish Engulfing
-        if (prev['c'] < prev['o'] and  # Previous candle is bearish (red)
-            curr['c'] > curr['o'] and  # Current candle is bullish (green)
-            curr['o'] < prev['c'] and  # Current opens below previous close
-            curr['c'] > prev['o']):    # Current closes above previous open
+            # Determine if it's a bullish or bearish pattern
+            direction = "bullish" if result[last_index] > 0 else "bearish"
             
-            patterns["bullish_engulfing"] = "Detected a bullish engulfing pattern, suggesting potential trend reversal to the upside."
-            analysis_logger.debug(f"Detected Bullish Engulfing pattern")
-        
-        # Bearish Engulfing
-        elif (prev['c'] > prev['o'] and  # Previous candle is bullish (green)
-              curr['c'] < curr['o'] and  # Current candle is bearish (red)
-              curr['o'] > prev['c'] and  # Current opens above previous close
-              curr['c'] < prev['o']):    # Current closes below previous open
-            
-            patterns["bearish_engulfing"] = "Detected a bearish engulfing pattern, suggesting potential trend reversal to the downside."
-            analysis_logger.debug(f"Detected Bearish Engulfing pattern")
-    
-    # Three-candle patterns (if we have at least 3 candles)
-    if len(recent_bars) >= 3:
-        first = recent_bars[-3]
-        middle = recent_bars[-2]
-        last = recent_bars[-1]
-        
-        first_body = abs(first['o'] - first['c'])
-        middle_body = abs(middle['o'] - middle['c'])
-        last_body = abs(last['o'] - last['c'])
-        
-        # Morning Star (bullish reversal)
-        if (first['c'] < first['o'] and  # First candle is bearish
-            middle_body <= 0.5 * first_body and  # Middle candle is small
-            last['c'] > last['o'] and  # Last candle is bullish
-            middle['h'] < first['c'] and  # Gap down to middle
-            last['o'] > middle['h']):  # Gap up from middle
-            
-            patterns["morning_star"] = "Detected a morning star pattern, a strong bullish reversal signal."
-            analysis_logger.debug(f"Detected Morning Star pattern")
-        
-        # Evening Star (bearish reversal)
-        elif (first['c'] > first['o'] and  # First candle is bullish
-              middle_body <= 0.5 * first_body and  # Middle candle is small
-              last['c'] < last['o'] and  # Last candle is bearish
-              middle['l'] > first['c'] and  # Gap up to middle
-              last['o'] < middle['l']):  # Gap down from middle
-            
-            patterns["evening_star"] = "Detected an evening star pattern, a strong bearish reversal signal."
-            analysis_logger.debug(f"Detected Evening Star pattern")
-        
-        # Three White Soldiers (bullish continuation)
-        if (first['c'] > first['o'] and  # First candle is bullish
-            middle['c'] > middle['o'] and  # Second candle is bullish
-            last['c'] > last['o'] and  # Third candle is bullish
-            middle['o'] > first['o'] and  # Each opens higher
-            last['o'] > middle['o'] and
-            middle['c'] > first['c'] and  # Each closes higher
-            last['c'] > middle['c']):
-            
-            patterns["three_white_soldiers"] = "Detected three white soldiers pattern, indicating a strong bullish trend."
-            analysis_logger.debug(f"Detected Three White Soldiers pattern")
-        
-        # Three Black Crows (bearish continuation)
-        if (first['c'] < first['o'] and  # First candle is bearish
-            middle['c'] < middle['o'] and  # Second candle is bearish
-            last['c'] < last['o'] and  # Third candle is bearish
-            middle['o'] < first['o'] and  # Each opens lower
-            last['o'] < middle['o'] and
-            middle['c'] < first['c'] and  # Each closes lower
-            last['c'] < middle['c']):
-            
-            patterns["three_black_crows"] = "Detected three black crows pattern, indicating a strong bearish trend."
-            analysis_logger.debug(f"Detected Three Black Crows pattern")
+            # Add to the patterns dictionary
+            pattern_key = f"{direction}_{pattern_name}" if result[last_index] != 0 else pattern_name
+            patterns[pattern_key] = f"Detected a {direction} {pattern_name} pattern: {description}"
+            analysis_logger.debug(f"Detected {direction} {pattern_name} pattern")
     
     if patterns:
-        analysis_logger.info(f"Detected {len(patterns)} candlestick patterns")
+        analysis_logger.info(f"Detected {len(patterns)} candlestick patterns using TA-Lib")
     else:
         analysis_logger.info("No candlestick patterns detected")
     
@@ -136,7 +102,7 @@ def detect_candlestick_patterns(bars, lookback=5):
 
 def analyze_trend(bars, periods=10):
     """
-    Analyze the price trend.
+    Analyze the price trend using TA-Lib indicators.
     
     Args:
         bars (list): List of price bars
@@ -149,44 +115,97 @@ def analyze_trend(bars, periods=10):
         analysis_logger.warning(f"Not enough bars for trend analysis (need {periods}, got {len(bars) if bars else 0})")
         return {"trend": "unknown", "strength": 0}
     
-    # Get the relevant bars
+    # Convert to DataFrame for easier processing
+    df = pd.DataFrame(bars)
+    
+    # Make sure columns are numeric
+    for col in ['o', 'h', 'l', 'c']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+    
+    # Convert to numpy arrays
+    close = np.array(df['c'])
+    high = np.array(df['h'])
+    low = np.array(df['l'])
+    
+    # Calculate ADX for trend strength
+    if len(bars) >= 14:  # ADX requires at least 14 periods
+        adx = ta.ADX(high, low, close, timeperiod=14)
+        last_adx = adx[-1]
+    else:
+        last_adx = 0
+    
+    # Calculate directional indicators for trend direction
+    if len(bars) >= 14:
+        plus_di = ta.PLUS_DI(high, low, close, timeperiod=14)
+        minus_di = ta.MINUS_DI(high, low, close, timeperiod=14)
+        last_plus_di = plus_di[-1]
+        last_minus_di = minus_di[-1]
+    else:
+        # Calculate simple price change as fallback
+        start_price = df['c'].iloc[0]
+        end_price = df['c'].iloc[-1]
+        price_change = end_price - start_price
+        price_change_pct = (price_change / start_price) * 100
+        
+        if price_change_pct > 0:
+            last_plus_di = 25
+            last_minus_di = 0
+        else:
+            last_plus_di = 0
+            last_minus_di = 25
+    
+    # Get the relevant bars for simple trend calculation
     trend_bars = bars[-periods:]
     
-    # Calculate the price change
+    # Calculate the price change as a simple backup
     start_price = trend_bars[0]['c']
     end_price = trend_bars[-1]['c']
     price_change = end_price - start_price
     percent_change = (price_change / start_price) * 100
     
-    # Determine trend direction and strength
-    if percent_change > 5:
-        trend = "strong_uptrend"
-        strength = min(100, abs(percent_change) * 2)
-    elif percent_change > 1.5:
-        trend = "uptrend"
-        strength = min(100, abs(percent_change) * 2)
-    elif percent_change < -5:
-        trend = "strong_downtrend"
-        strength = min(100, abs(percent_change) * 2)
-    elif percent_change < -1.5:
-        trend = "downtrend"
-        strength = min(100, abs(percent_change) * 2)
+    # Determine trend based on ADX and directional indicators
+    if last_adx >= 25:
+        if last_plus_di > last_minus_di:
+            if last_adx >= 50:
+                trend = "strong_uptrend"
+            else:
+                trend = "uptrend"
+        else:
+            if last_adx >= 50:
+                trend = "strong_downtrend"
+            else:
+                trend = "downtrend"
+        
+        strength = min(100, last_adx * 2)
     else:
-        trend = "sideways"
-        strength = min(100, 100 - abs(percent_change) * 5)
+        # Weak ADX, potentially sideways market
+        if abs(percent_change) < 1.5:
+            trend = "sideways"
+            strength = min(100, 100 - last_adx * 2)
+        else:
+            # Still has some direction despite weak ADX
+            if percent_change > 0:
+                trend = "weak_uptrend"
+            else:
+                trend = "weak_downtrend"
+            strength = min(100, last_adx * 2)
     
-    analysis_logger.info(f"Trend analysis: {trend} with {strength:.1f}% strength")
+    analysis_logger.info(f"Trend analysis using TA-Lib indicators: {trend} with {strength:.1f}% strength")
     
     return {
         "trend": trend,
         "strength": round(strength, 1),
         "price_change": round(price_change, 2),
-        "percent_change": round(percent_change, 2)
+        "percent_change": round(percent_change, 2),
+        "adx": round(float(last_adx), 2) if last_adx is not np.nan else 0,
+        "plus_di": round(float(last_plus_di), 2) if last_plus_di is not np.nan else 0,
+        "minus_di": round(float(last_minus_di), 2) if last_minus_di is not np.nan else 0
     }
 
 def analyze_support_resistance(bars, lookback=20):
     """
-    Identify potential support and resistance levels.
+    Identify potential support and resistance levels using TA-Lib.
     
     Args:
         bars (list): List of price bars
@@ -199,63 +218,88 @@ def analyze_support_resistance(bars, lookback=20):
         analysis_logger.warning("Not enough bars for support/resistance analysis")
         return {"support": [], "resistance": []}
     
-    analysis_bars = bars[-lookback:]
+    # Convert to DataFrame for easier processing
+    df = pd.DataFrame(bars)
     
-    # Find local highs and lows
-    highs = []
-    lows = []
+    # Make sure columns are numeric
+    for col in ['o', 'h', 'l', 'c']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col])
     
-    # Simple algorithm for local extrema
-    for i in range(1, len(analysis_bars) - 1):
-        # Local high
-        if (analysis_bars[i]['h'] > analysis_bars[i-1]['h'] and 
-            analysis_bars[i]['h'] > analysis_bars[i+1]['h']):
-            highs.append(analysis_bars[i]['h'])
+    # Convert to numpy arrays
+    close = np.array(df['c'])
+    high = np.array(df['h'])
+    low = np.array(df['l'])
+    
+    # Use Pivot Points as a way to find support/resistance
+    # Get the most recent completed bar
+    last_idx = len(bars) - 1
+    
+    # Try to identify recent high and low points
+    # TA-Lib doesn't have a direct function for support/resistance,
+    # so we'll use a Pivot Points approach
+    
+    # First, find local maxima and minima
+    local_max = []
+    local_min = []
+    
+    for i in range(1, min(lookback, len(bars) - 1)):
+        if high[-i] > high[-(i+1)] and high[-i] > high[-(i-1)]:
+            local_max.append(high[-i])
         
-        # Local low
-        if (analysis_bars[i]['l'] < analysis_bars[i-1]['l'] and 
-            analysis_bars[i]['l'] < analysis_bars[i+1]['l']):
-            lows.append(analysis_bars[i]['l'])
+        if low[-i] < low[-(i+1)] and low[-i] < low[-(i-1)]:
+            local_min.append(low[-i])
     
-    # Cluster close levels (within 0.5% of each other)
-    support_levels = []
-    resistance_levels = []
+    # Current price
+    current_price = close[-1]
     
-    if lows:
-        current_price = analysis_bars[-1]['c']
-        for level in lows:
-            if level < current_price:  # Only levels below current price are support
-                # Check if we already have a close level
-                is_new = True
-                for existing in support_levels:
-                    if abs(existing - level) / existing < 0.005:  # Within 0.5%
-                        is_new = False
-                        break
-                
-                if is_new:
-                    support_levels.append(level)
+    # Filter support and resistance
+    support_levels = [price for price in local_min if price < current_price]
+    resistance_levels = [price for price in local_max if price > current_price]
     
-    if highs:
-        current_price = analysis_bars[-1]['c']
-        for level in highs:
-            if level > current_price:  # Only levels above current price are resistance
-                # Check if we already have a close level
-                is_new = True
-                for existing in resistance_levels:
-                    if abs(existing - level) / existing < 0.005:  # Within 0.5%
-                        is_new = False
-                        break
-                
-                if is_new:
-                    resistance_levels.append(level)
-    
-    # Sort and take the closest few levels
-    support_levels.sort(reverse=True)  # Closest support first
-    resistance_levels.sort()  # Closest resistance first
+    # Sort and remove duplicates
+    support_levels = sorted(set(support_levels), reverse=True)
+    resistance_levels = sorted(set(resistance_levels))
     
     # Take at most 3 levels
     support_levels = support_levels[:3]
     resistance_levels = resistance_levels[:3]
+    
+    # If we don't have enough levels, add calculated pivot levels
+    if len(support_levels) < 3 or len(resistance_levels) < 3:
+        # Get high, low, close from last complete session 
+        last_high = high[-2]
+        last_low = low[-2]
+        last_close = close[-2]
+        
+        # Calculate classic pivot point
+        pivot = (last_high + last_low + last_close) / 3
+        
+        # Calculate support levels
+        s1 = (2 * pivot) - last_high
+        s2 = pivot - (last_high - last_low)
+        
+        # Calculate resistance levels
+        r1 = (2 * pivot) - last_low
+        r2 = pivot + (last_high - last_low)
+        
+        # Add missing support levels
+        for level in [s1, s2]:
+            if level < current_price and len(support_levels) < 3:
+                support_levels.append(float(level))
+        
+        # Add missing resistance levels
+        for level in [r1, r2]:
+            if level > current_price and len(resistance_levels) < 3:
+                resistance_levels.append(float(level))
+        
+        # Sort again
+        support_levels = sorted(set(support_levels), reverse=True)
+        resistance_levels = sorted(set(resistance_levels))
+        
+        # Take at most 3 levels
+        support_levels = support_levels[:3]
+        resistance_levels = resistance_levels[:3]
     
     analysis_logger.info(f"Identified {len(support_levels)} support and {len(resistance_levels)} resistance levels")
     
