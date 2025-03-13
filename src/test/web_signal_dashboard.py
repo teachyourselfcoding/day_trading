@@ -860,13 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Make the AJAX request
-            fetch('/load_data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ticker: selectedStock })
-            })
+            fetch(`/api/data/${currentSymbol}`)
             .then(response => {
                 console.log('Response status:', response.status);
                 if (!response.ok) {
