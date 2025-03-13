@@ -14,10 +14,12 @@ import pandas as pd
 import numpy as np
 import talib as ta
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template_string, request, jsonify, send_from_directory
 
 # Create Flask app
-app = Flask(__name__)
+app = Flask(__name__, 
+            static_folder='templates/static',  # Point to your actual static folder
+            template_folder='templates') 
 app.config['SECRET_KEY'] = os.urandom(24)
 
 # Configure directories
@@ -52,6 +54,82 @@ def load_data_file(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
+@app.route('/load_data', methods=['POST'])
+def load_data():
+    try:
+        # Get data from request
+        data = request.get_json()
+        ticker = data.get('ticker')
+        
+        if not ticker:
+            return jsonify({'error': 'No ticker provided'}), 400
+            
+        print(f"Loading data for {ticker}")  # Debug log
+        
+        # Your data processing logic here
+        # Example: fetch stock data from your data source
+        # Replace this with your actual data retrieval code
+        
+        # For testing, return dummy data
+        dummy_data = {
+            'ticker': ticker,
+            'datetime': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'],
+            'price': {
+                'open': [150.0, 152.5, 157.2, 160.8, 163.5],
+                'high': [155.0, 158.0, 162.5, 165.0, 164.0],
+                'low': [148.0, 151.0, 156.0, 159.5, 158.0],
+                'close': [152.5, 157.2, 160.8, 163.5, 159.2],
+                'volume': [1250000, 1320000, 1450000, 1550000, 1650000]
+            },
+            'indicators': {
+                'sma_20': [151.2, 153.6, 158.3, 161.2, 160.1],
+                'sma_50': [149.8, 151.5, 154.2, 157.8, 159.0],
+                'sma_200': [145.3, 146.8, 148.2, 150.1, 151.5],
+                'ema_12': [151.8, 154.2, 158.9, 162.1, 160.2],
+                'ema_26': [150.1, 152.3, 155.6, 158.9, 159.0],
+                'bb_upper': [160.2, 165.3, 168.7, 170.2, 167.8],
+                'bb_middle': [151.2, 153.6, 158.3, 161.2, 160.1],
+                'bb_lower': [142.2, 141.9, 147.9, 152.2, 152.4],
+                'rsi': [65.2, 68.7, 72.3, 74.8, 45.6],
+                'macd': [1.7, 1.9, 3.3, 3.2, 1.2],
+                'macd_signal': [1.2, 1.4, 2.0, 2.3, 2.0],
+                'macd_hist': [0.5, 0.5, 1.3, 0.9, -0.8],
+                'stoch_k': [82.3, 85.7, 88.2, 90.1, 45.3],
+                'stoch_d': [78.9, 82.3, 85.4, 88.0, 74.5],
+                'adx': [22.5, 24.3, 26.8, 28.9, 27.5]
+            },
+            'patterns': {
+                'bullish': [
+                    {'date': '2023-01-02', 'pattern': 'Hammer'},
+                    {'date': '2023-01-04', 'pattern': 'Morning Star'}
+                ],
+                'bearish': [
+                    {'date': '2023-01-05', 'pattern': 'Shooting Star'}
+                ]
+            },
+            'signals': {
+                'rsi': [
+                    {'date': '2023-01-03', 'signal': 'Overbought'},
+                    {'date': '2023-01-04', 'signal': 'Overbought'},
+                    {'date': '2023-01-05', 'signal': 'Oversold'}
+                ],
+                'macd': [
+                    {'date': '2023-01-05', 'signal': 'Bearish Crossover'}
+                ],
+                'bollinger': [
+                    {'date': '2023-01-03', 'signal': 'Upper Band Touch'},
+                    {'date': '2023-01-05', 'signal': 'Lower Band Touch'}
+                ],
+                'crossovers': []
+            }
+        }
+        
+        return jsonify(dummy_data)
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
 def find_data_files(symbol, data_dir=DATA_DIR):
     """Find data files for a given symbol."""
     pattern = f"{symbol}_*.json"
@@ -747,19 +825,111 @@ let currentSymbol = '';
 
 // Initialize the dashboard when the document is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up event listeners
-    document.getElementById('loadSymbolBtn').addEventListener('click', loadSymbolData);
-    document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
-    document.getElementById('exportDataBtn').addEventListener('click', exportData);
+    console.log('Dashboard.js loaded successfully');
     
-    // Set up checkbox event listeners for toggling chart elements
-    setupCheckboxListeners();
+    // Get references to DOM elements
+    const selectedStock = document.getElementById('symbolSelect').value;
+    const loadDataBtn = document.getElementById('loadSymbolBtn');
+    const dataContainer = document.getElementById('data-container');
     
-    // Load default symbol if one is selected
-    const symbolSelect = document.getElementById('symbolSelect');
-    if (symbolSelect.options.length > 0) {
-        currentSymbol = symbolSelect.options[0].value;
-        loadSymbolData();
+    // Simple test to verify the button is working
+    if (loadDataBtn) {
+        console.log('Load data button found');
+        
+        // Add a direct onclick handler for testing
+        loadDataBtn.onclick = function() {
+            console.log('Button clicked via onclick');
+        };
+        
+        // Add a more robust event listener
+        loadDataBtn.addEventListener('click', function() {
+            console.log('Button clicked via addEventListener');
+            
+            // Get the selected stock
+            const selectedStock = document.getElementById('symbolSelect') ? document.getElementById('symbolSelect').value : '';
+            console.log('Selected stock:', selectedStock);
+            if (!selectedStock) {
+                console.log('No stock selected');
+                alert('Please select a stock first');
+                return;
+            }
+            
+            // Show loading indicator
+            if (dataContainer) {
+                dataContainer.innerHTML = '<p>Loading data...</p>';
+            }
+            
+            // Make the AJAX request
+            fetch('/load_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ticker: selectedStock })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+                displayData(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (dataContainer) {
+                    dataContainer.innerHTML = '<p>Error loading data: ' + error.message + '</p>';
+                }
+            });
+        });
+    } else {
+        console.error('Load data button not found');
+    }
+    
+    // Function to display the data
+    function displayData(data) {
+        if (!dataContainer) return;
+        
+        try {
+            // Create a heading for the data
+            let html = '<h2>Data for ' + data.ticker + '</h2>';
+            
+            if (data.data && data.data.length > 0) {
+                // Get the column names from the first data item
+                const columns = Object.keys(data.data[0]);
+                
+                // Create a table
+                html += '<table border="1"><tr>';
+                
+                // Add table headers
+                columns.forEach(column => {
+                    html += '<th>' + column + '</th>';
+                });
+                html += '</tr>';
+                
+                // Add table rows
+                data.data.forEach(row => {
+                    html += '<tr>';
+                    columns.forEach(column => {
+                        html += '<td>' + row[column] + '</td>';
+                    });
+                    html += '</tr>';
+                });
+                
+                html += '</table>';
+            } else {
+                html += '<p>No data available for this stock</p>';
+            }
+            
+            // Update the data container
+            dataContainer.innerHTML = html;
+        } catch (error) {
+            console.error('Error displaying data:', error);
+            dataContainer.innerHTML = '<p>Error displaying data: ' + error.message + '</p>';
+        }
     }
 });
 
@@ -1549,7 +1719,7 @@ function exportData() {
     let csvContent = "data:text/csv;charset=utf-8,";
     
     // Add header row
-    csvContent += "DateTime,Open,High,Low,Close,Volume,SMA20,SMA50,SMA200,EMA12,EMA26,BB_Upper,BB_Middle,BB_Lower,RSI,MACD,MACD_Signal,MACD_Hist,Stoch_K,Stoch_D,ADX\n";
+    csvContent += "DateTime,Open,High,Low,Close,Volume,SMA20,SMA50,SMA200,EMA12,EMA26,BB_Upper,BB_Middle,BB_Lower,RSI,MACD,MACD_Signal,MACD_Hist,Stoch_K,Stoch_D,ADX";
     
     // Add data rows
     for (let i = 0; i < chartData.datetime.length; i++) {
@@ -1577,7 +1747,7 @@ function exportData() {
             chartData.indicators.adx[i] || ""
         ];
         
-        csvContent += row.join(",") + "\n";
+        csvContent += row.join(",");
     }
     
     // Create download link
