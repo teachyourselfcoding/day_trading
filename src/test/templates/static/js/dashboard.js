@@ -160,22 +160,37 @@ function setupCheckboxListeners() {
 }
 
 // Load data for the selected symbol
+// Update your loadSymbolData function
 function loadSymbolData() {
-    // Show loading message
-    document.getElementById('loadingMessage').style.display = 'block';
-    document.getElementById('chartContainer').style.opacity = '0.5';
-    
     // Get the selected symbol
     const symbolSelect = document.getElementById('symbolSelect');
     currentSymbol = symbolSelect.value;
     
+    // Only proceed if a symbol is selected
+    if (!currentSymbol) {
+        alert("Please select a symbol first");
+        return;
+    }
+    
+    // Show loading message
+    const loadingMessage = document.getElementById('loadingMessage');
+    const chartContainer = document.getElementById('chartContainer');
+    
+    if (loadingMessage) loadingMessage.style.display = 'block';
+    if (chartContainer) chartContainer.style.opacity = '0.5';
+    
     // Fetch data from the server
     fetch(`/api/data/${currentSymbol}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             // Hide loading message
-            document.getElementById('loadingMessage').style.display = 'none';
-            document.getElementById('chartContainer').style.opacity = '1';
+            if (loadingMessage) loadingMessage.style.display = 'none';
+            if (chartContainer) chartContainer.style.opacity = '1';
             
             // Store the data globally
             chartData = data;
@@ -188,9 +203,9 @@ function loadSymbolData() {
         })
         .catch(error => {
             console.error('Error loading data:', error);
-            document.getElementById('loadingMessage').style.display = 'none';
-            document.getElementById('chartContainer').style.opacity = '1';
-            alert('Error loading data. See console for details.');
+            if (loadingMessage) loadingMessage.style.display = 'none';
+            if (chartContainer) chartContainer.style.opacity = '1';
+            alert('Error loading data: ' + error.message);
         });
 }
 

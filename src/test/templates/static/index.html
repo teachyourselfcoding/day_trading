@@ -1,0 +1,302 @@
+index_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Signal Verification Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <h5 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-2 mb-2">
+                        <span>Trading Signal Verification</span>
+                    </h5>
+                    
+                    <div class="p-3">
+                        <label for="symbolSelect" class="form-label">Symbol:</label>
+                        <select id="symbolSelect" class="form-select mb-3">
+                            {% for symbol in symbols %}
+                            <option value="{{ symbol }}">{{ symbol }}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <button id="loadSymbolBtn" class="btn btn-primary mb-3 w-100">Load Data</button>
+                    </div>
+                    
+                    <div class="accordion" id="settingsAccordion">
+                        <!-- Price Settings -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="priceHeading">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#priceCollapse" aria-expanded="true" aria-controls="priceCollapse">
+                                    Price Settings
+                                </button>
+                            </h2>
+                            <div id="priceCollapse" class="accordion-collapse collapse show" aria-labelledby="priceHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showPriceChart" checked>
+                                        <label class="form-check-label" for="showPriceChart">
+                                            Show Price Chart
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showVolume" checked>
+                                        <label class="form-check-label" for="showVolume">
+                                            Show Volume
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Moving Averages -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="maHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#maCollapse" aria-expanded="false" aria-controls="maCollapse">
+                                    Moving Averages
+                                </button>
+                            </h2>
+                            <div id="maCollapse" class="accordion-collapse collapse" aria-labelledby="maHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showSMA20">
+                                        <label class="form-check-label" for="showSMA20">
+                                            SMA 20
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showSMA50">
+                                        <label class="form-check-label" for="showSMA50">
+                                            SMA 50
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showSMA200">
+                                        <label class="form-check-label" for="showSMA200">
+                                            SMA 200
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showEMA12">
+                                        <label class="form-check-label" for="showEMA12">
+                                            EMA 12
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showEMA26">
+                                        <label class="form-check-label" for="showEMA26">
+                                            EMA 26
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bollinger Bands -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="bbHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#bbCollapse" aria-expanded="false" aria-controls="bbCollapse">
+                                    Bollinger Bands
+                                </button>
+                            </h2>
+                            <div id="bbCollapse" class="accordion-collapse collapse" aria-labelledby="bbHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBBUpper">
+                                        <label class="form-check-label" for="showBBUpper">
+                                            Upper Band
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBBMiddle">
+                                        <label class="form-check-label" for="showBBMiddle">
+                                            Middle Band
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBBLower">
+                                        <label class="form-check-label" for="showBBLower">
+                                            Lower Band
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Indicators -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="indicatorsHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#indicatorsCollapse" aria-expanded="false" aria-controls="indicatorsCollapse">
+                                    Technical Indicators
+                                </button>
+                            </h2>
+                            <div id="indicatorsCollapse" class="accordion-collapse collapse" aria-labelledby="indicatorsHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showRSI">
+                                        <label class="form-check-label" for="showRSI">
+                                            RSI
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showMACD">
+                                        <label class="form-check-label" for="showMACD">
+                                            MACD
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showStochastic">
+                                        <label class="form-check-label" for="showStochastic">
+                                            Stochastic
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showADX">
+                                        <label class="form-check-label" for="showADX">
+                                            ADX
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Patterns -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="patternsHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#patternsCollapse" aria-expanded="false" aria-controls="patternsCollapse">
+                                    Candlestick Patterns
+                                </button>
+                            </h2>
+                            <div id="patternsCollapse" class="accordion-collapse collapse" aria-labelledby="patternsHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBullishPatterns" checked>
+                                        <label class="form-check-label" for="showBullishPatterns">
+                                            Bullish Patterns
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBearishPatterns" checked>
+                                        <label class="form-check-label" for="showBearishPatterns">
+                                            Bearish Patterns
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Signals -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="signalsHeading">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#signalsCollapse" aria-expanded="false" aria-controls="signalsCollapse">
+                                    Technical Signals
+                                </button>
+                            </h2>
+                            <div id="signalsCollapse" class="accordion-collapse collapse" aria-labelledby="signalsHeading">
+                                <div class="accordion-body">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showRSISignals" checked>
+                                        <label class="form-check-label" for="showRSISignals">
+                                            RSI Overbought/Oversold
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showMACDSignals" checked>
+                                        <label class="form-check-label" for="showMACDSignals">
+                                            MACD Crossovers
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBBSignals" checked>
+                                        <label class="form-check-label" for="showBBSignals">
+                                            Bollinger Band Touches
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showCrossovers" checked>
+                                        <label class="form-check-label" for="showCrossovers">
+                                            Golden/Death Crosses
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Signal Verification Dashboard</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button id="zoomResetBtn" class="btn btn-sm btn-outline-secondary">Reset Zoom</button>
+                            <button id="exportDataBtn" class="btn btn-sm btn-outline-secondary">Export Data</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="loadingMessage" class="text-center mt-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading and analyzing data...</p>
+                </div>
+                
+                <div id="chartContainer">
+                    <div id="priceChart" style="height: 500px;"></div>
+                    <div id="indicatorCharts">
+                        <div id="rsiChart" style="height: 200px; display: none;"></div>
+                        <div id="macdChart" style="height: 200px; display: none;"></div>
+                        <div id="stochChart" style="height: 200px; display: none;"></div>
+                        <div id="adxChart" style="height: 200px; display: none;"></div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Signal Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="signalSummary">
+                                    <p>Load a symbol to view signal summary.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Pattern Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="patternSummary">
+                                    <p>Load a symbol to view pattern summary.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
+"""

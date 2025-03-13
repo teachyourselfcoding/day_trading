@@ -1,0 +1,108 @@
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-top: 10px;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    overflow-y: auto;
+}
+
+.sidebar-sticky {
+    position: relative;
+    top: 0;
+    height: calc(100vh - 48px);
+    padding-top: 0.5rem;
+    padding-bottom: 1rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+}
+
+.sidebar .nav-link:hover {
+    color: #007bff;
+}
+
+.sidebar-heading {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+}
+
+#chartContainer {
+    width: 100%;
+    overflow: hidden;
+}
+
+.signal-indicator {
+    position: absolute;
+    z-index: 10;
+}
+
+.bullish-marker {
+    color: green;
+    font-size: 20px;
+}
+
+.bearish-marker {
+    color: red;
+    font-size: 20px;
+}
+
+.tooltip-inner {
+    max-width: 200px;
+    padding: 8px;
+    color: #fff;
+    text-align: center;
+    background-color: #000;
+    border-radius: 4px;
+}
+
+.signal-summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.signal-count {
+    font-weight: bold;
+}
+
+.bullish-count {
+    color: green;
+}
+
+.bearish-count {
+    color: red;
+}
+
+#rsiChart, #macdChart, #stochChart, #adxChart {
+    margin-top: 15px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.table-success, .table-danger {
+    font-weight: bold;
+}
+
+.table-sm td, .table-sm th {
+    padding: 0.25rem 0.5rem;
+}
