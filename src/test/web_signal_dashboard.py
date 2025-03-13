@@ -15,6 +15,7 @@ import numpy as np
 import talib as ta
 from datetime import datetime
 from flask import Flask, render_template_string, request, jsonify, send_from_directory
+import math
 
 # Define correct paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -405,7 +406,7 @@ def process_symbol_data(symbol):
             'stoch_overbought': df['stoch_overbought'].tolist()
         }
     }
-    
+    chart_data = replace_nan_with_none(chart_data)
     # Save results to file
     output_file = os.path.join(ANALYSIS_DIR, f"{symbol}_analysis.json")
     with open(output_file, 'w') as f:
@@ -500,6 +501,16 @@ def create_templates():
     
     print(f"Templates directory: {TEMPLATE_DIR}")
 
+def replace_nan_with_none(obj):
+    """Recursively replace NaN values in a dict or list with None."""
+    if isinstance(obj, dict):
+        return {k: replace_nan_with_none(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [replace_nan_with_none(item) for item in obj]
+    elif isinstance(obj, float) and math.isnan(obj):
+        return None
+    else:
+        return obj
 # Main execution
 if __name__ == '__main__':
     import argparse

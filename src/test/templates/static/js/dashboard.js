@@ -32,40 +32,10 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDataBtn.addEventListener('click', function() {
             console.log('Button clicked via addEventListener');
             
-            // Get the selected stock
-            const selectedStock = document.getElementById('symbolSelect') ? document.getElementById('symbolSelect').value : '';
-            console.log('Selected stock:', selectedStock);
-            if (!selectedStock) {
-                console.log('No stock selected');
-                alert('Please select a stock first');
-                return;
-            }
-            
-            // Show loading indicator
-            if (dataContainer) {
-                dataContainer.innerHTML = '<p>Loading data...</p>';
-            }
-            
-            // Make the AJAX request
-            fetch(`/api/data/${currentSymbol}`)
-            .then(response => {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Data received:', data);
-                displayData(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                if (dataContainer) {
-                    dataContainer.innerHTML = '<p>Error loading data: ' + error.message + '</p>';
-                }
-            });
+            // Directly call loadSymbolData to load data and display charts
+            loadSymbolData();
         });
+
     } else {
         console.error('Load data button not found');
     }
