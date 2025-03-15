@@ -1,61 +1,228 @@
 {% extends "base.html" %}
 
-{% block title %}Signal Charts | Trading Dashboard{% endblock %}
+{% block title %}Run New Scan | Trading Dashboard{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Page heading -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2">Signal Charts</h1>
-        <div>
-            <form class="d-flex" method="get">
-                <select class="form-select me-2" name="days" onchange="this.form.submit()">
-                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
-                    <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
-                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
-                    <option value="60" {% if days == 60 %}selected{% endif %}>Last 60 days</option>
-                    <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
-                </select>
-            </form>
-        </div>
+        <h1 class="h2">New Trading Signal Scan</h1>
     </div>
     
-    <!-- Charts row -->
+    <!-- Scan form card -->
     <div class="row">
-        <!-- Signal distribution chart -->
-        <div class="col-md-6">
+        <div class="col-md-6 mx-auto">
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <i class="fas fa-chart-pie"></i> Signal Distribution
+                    <i class="fas fa-search"></i> Generate New Trading Signal
                 </div>
                 <div class="card-body">
-                    <canvas id="signalDistribution" height="300"></canvas>
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="symbol" class="form-label">Symbol</label>
+                            <select class="form-select" id="symbol" name="symbol" required>
+                                <option value="">Select a symbol</option>
+                                {% for symbol in symbols %}
+                                <option value="{{ symbol }}" {% if request.args.get('symbol') == symbol %}selected{% endif %}>{{ symbol }}</option>
+                                {% endfor %}
+                                <option value="custom">Custom Symbol...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="customSymbolDiv" style="display: none;">
+                            <label for="customSymbol" class="form-label">Enter Custom Symbol</label>
+                            <input type="text" class="form-control" id="customSymbol" name="customSymbol" placeholder="e.g., TSLA">
+                        </div>
+                        
+                        <!-- Enhanced Timeframe Controls -->
+                        <div class="card mb-3 border-info">
+                            <div class="card-header bg-info text-white">
+                                <i class="fas fa-clock"></i> Timeframe Settings
+                                <button class="btn btn-sm btn-outline-light float-end" type="button" data-bs-toggle="collapse" data-bs-target="#timeframeCollapse">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="timeframeCollapse">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="interval" class="form-label">Time Interval</label>
+                                            <select class="form-select" id="interval" name="interval">
+                                                <option value="1m">1 Minute</option>
+                                                <option value="5m" selected>5 Minutes</option>
+                                                <option value="15m">15 Minutes</option>
+                                                <option value="30m">30 Minutes</option>
+                                                <option value="60m">60 Minutes</option>
+                                                <option value="1h">1 Hour</option>
+                                                <option value="1d">1 Day</option>
+                                                <option value="1wk">1 Week</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="period" class="form-label">Look-back Period</label>
+                                            <select class="form-select" id="period" name="period">
+                                                <option value="1d">1 Day</option>
+                                                <option value="5d" selected>5 Days</option>
+                                                <option value="10d">10 Days</option>
+                                                <option value="1mo">1 Month</option>
+                                                <option value="3mo">3 Months</option>
+                                                <option value="6mo">6 Months</option>
+                                                <option value="1y">1 Year</option>
+                                                <option value="2y">2 Years</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Advanced Indicator Settings -->
+                                    <div class="mt-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="showAdvancedSettings" 
+                                                  onchange="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none'">
+                                            <label class="form-check-label" for="showAdvancedSettings">
+                                                Show Advanced Indicator Settings
+                                            </label>
+                                        </div>
+                                        
+                                        <div id="advancedSettings" class="mt-3" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Moving Averages</h6>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 1</span>
+                                                        <input type="number" class="form-control" id="sma1" name="sma1" value="20" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 2</span>
+                                                        <input type="number" class="form-control" id="sma2" name="sma2" value="50" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 3</span>
+                                                        <input type="number" class="form-control" id="sma3" name="sma3" value="200" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">EMA 1</span>
+                                                        <input type="number" class="form-control" id="ema1" name="ema1" value="12" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">EMA 2</span>
+                                                        <input type="number" class="form-control" id="ema2" name="ema2" value="26" min="1" max="200">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Oscillators</h6>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">RSI</span>
+                                                        <input type="number" class="form-control" id="rsi" name="rsi" value="14" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Fast</span>
+                                                        <input type="number" class="form-control" id="macd_fast" name="macd_fast" value="12" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Slow</span>
+                                                        <input type="number" class="form-control" id="macd_slow" name="macd_slow" value="26" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Signal</span>
+                                                        <input type="number" class="form-control" id="macd_signal" name="macd_signal" value="9" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">BB Periods</span>
+                                                        <input type="number" class="form-control" id="bb_period" name="bb_period" value="20" min="1" max="50">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="technical" name="technical" checked>
+                            <label class="form-check-label" for="technical">Include Technical Analysis</label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="patterns" name="patterns" checked>
+                            <label class="form-check-label" for="patterns">Detect Candlestick Patterns</label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sync-alt"></i> Generate Signal
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </div>
-        
-        <!-- Signals timeline chart -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <i class="fas fa-chart-line"></i> Signals Timeline
-                </div>
-                <div class="card-body">
-                    <canvas id="signalsTimeline" height="300"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Confidence chart row -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
+            
+            <!-- Timeframe Recommendations Card -->
+            <div class="card mt-4">
                 <div class="card-header bg-success text-white">
-                    <i class="fas fa-chart-bar"></i> Signal Confidence Levels
+                    <i class="fas fa-info-circle"></i> Timeframe Recommendations
                 </div>
                 <div class="card-body">
-                    <canvas id="confidenceChart" height="300"></canvas>
+                    <p class="mb-2">Different timeframes work better with different trading strategies:</p>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Scalping</strong>
+                                <div class="text-muted small">Very short-term trades</div>
+                            </div>
+                            <span class="badge bg-primary">1m, 5m</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Day Trading</strong>
+                                <div class="text-muted small">Intraday positions</div>
+                            </div>
+                            <span class="badge bg-primary">15m, 30m, 1h</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Swing Trading</strong>
+                                <div class="text-muted small">Multiple day positions</div>
+                            </div>
+                            <span class="badge bg-primary">1h, 4h, 1d</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Position Trading</strong>
+                                <div class="text-muted small">Long-term investments</div>
+                            </div>
+                            <span class="badge bg-primary">1d, 1wk</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Quick scan for common symbols -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-bolt"></i> Quick Scan
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Generate signals for popular symbols:</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for symbol in symbols %}
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="symbol" value="{{ symbol }}">
+                            <input type="hidden" name="interval" value="15m">
+                            <input type="hidden" name="technical" value="on">
+                            <input type="hidden" name="patterns" value="on">
+                            <button type="submit" class="btn btn-outline-primary">
+                                {{ symbol }}
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -65,197 +232,50 @@
 
 {% block scripts %}
 <script>
-    // Parse chart data from server
-    let chartData;
-    try {
-        chartData = JSON.parse('{{ chart_data|safe }}');
-    } catch (e) {
-        console.error("Error parsing chart data:", e);
-        // Fallback to empty data structure
-        chartData = {"dates":[],"buy":[],"sell":[],"hold":[],"high":[],"medium":[],"low":[]};
-    }
-    
-    // Colors
-    const colors = {
-        buy: 'rgba(40, 167, 69, 0.7)',
-        sell: 'rgba(220, 53, 69, 0.7)',
-        hold: 'rgba(255, 193, 7, 0.7)',
-        high: 'rgba(40, 167, 69, 0.7)',
-        medium: 'rgba(255, 193, 7, 0.7)',
-        low: 'rgba(220, 53, 69, 0.7)'
-    };
-    
-    // Signal Distribution Chart
-    const ctxDistribution = document.getElementById('signalDistribution').getContext('2d');
-    
-    // Calculate totals for the pie chart
-    let buyTotal = 0;
-    let sellTotal = 0;
-    let holdTotal = 0;
-    
-    if (chartData.buy && chartData.buy.length > 0) {
-        buyTotal = chartData.buy.reduce((a, b) => a + b, 0);
-    }
-    if (chartData.sell && chartData.sell.length > 0) {
-        sellTotal = chartData.sell.reduce((a, b) => a + b, 0);
-    }
-    if (chartData.hold && chartData.hold.length > 0) {
-        holdTotal = chartData.hold.reduce((a, b) => a + b, 0);
-    }
-    
-    const distributionChart = new Chart(ctxDistribution, {
-        type: 'pie',
-        data: {
-            labels: ['Buy', 'Sell', 'Hold'],
-            datasets: [{
-                data: [buyTotal, sellTotal, holdTotal],
-                backgroundColor: [colors.buy, colors.sell, colors.hold],
-                borderColor: ['#28a745', '#dc3545', '#ffc107'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                },
-                title: {
-                    display: true,
-                    text: 'Signal Distribution'
-                }
-            }
-        }
-    });
-    
-    // Signals Timeline Chart
-    const ctxTimeline = document.getElementById('signalsTimeline').getContext('2d');
-    const timelineChart = new Chart(ctxTimeline, {
-        type: 'bar',
-        data: {
-            labels: chartData.dates,
-            datasets: [
-                {
-                    label: 'Buy',
-                    data: chartData.buy,
-                    backgroundColor: colors.buy,
-                    borderColor: '#28a745',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Sell',
-                    data: chartData.sell,
-                    backgroundColor: colors.sell,
-                    borderColor: '#dc3545',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Hold',
-                    data: chartData.hold,
-                    backgroundColor: colors.hold,
-                    borderColor: '#ffc107',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    stacked: true,
-                },
-                y: {
-                    stacked: true,
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Daily Signal Count'
-                }
-            }
-        }
-    });
-    
-    // For the confidence chart, we'll fetch the actual data from the server
-    // but provide fallback in case it's not available
-    let confidenceData = {
-        labels: chartData.dates,
-        high: new Array(chartData.dates.length).fill(0),
-        medium: new Array(chartData.dates.length).fill(0),
-        low: new Array(chartData.dates.length).fill(0)
-    };
-    
-    // In a real implementation, we would have this data passed from the server
-    // For now, we'll make a reasonable estimate based on total signals
-    for (let i = 0; i < chartData.dates.length; i++) {
-        // Calculate total signals for this day
-        const total = (chartData.buy[i] || 0) + (chartData.sell[i] || 0) + (chartData.hold[i] || 0);
+    // Show/hide custom symbol input based on selection
+    document.getElementById('symbol').addEventListener('change', function() {
+        const customSymbolDiv = document.getElementById('customSymbolDiv');
+        const customSymbolInput = document.getElementById('customSymbol');
         
-        if (total > 0) {
-            // Distribute according to typical confidence distribution
-            // This is more realistic than random values
-            confidenceData.high[i] = Math.round(total * 0.5);  // 50% high confidence
-            confidenceData.medium[i] = Math.round(total * 0.3); // 30% medium confidence
-            confidenceData.low[i] = total - confidenceData.high[i] - confidenceData.medium[i]; // Remainder as low
+        if (this.value === 'custom') {
+            customSymbolDiv.style.display = 'block';
+            customSymbolInput.setAttribute('required', 'required');
+        } else {
+            customSymbolDiv.style.display = 'none';
+            customSymbolInput.removeAttribute('required');
         }
-    }
+    });
     
-    // Confidence Chart
-    const ctxConfidence = document.getElementById('confidenceChart').getContext('2d');
-    const confidenceChart = new Chart(ctxConfidence, {
-        type: 'line',
-        data: {
-            labels: chartData.dates,
-            datasets: [
-                {
-                    label: 'High Confidence',
-                    data: chartData.high || confidenceData.high,  // Use actual data if available
-                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                    borderColor: colors.high,
-                    borderWidth: 2,
-                    tension: 0.1,
-                    fill: true
-                },
-                {
-                    label: 'Medium Confidence',
-                    data: chartData.medium || confidenceData.medium,  // Use actual data if available
-                    backgroundColor: 'rgba(255, 193, 7, 0.2)',
-                    borderColor: colors.medium,
-                    borderWidth: 2,
-                    tension: 0.1,
-                    fill: true
-                },
-                {
-                    label: 'Low Confidence',
-                    data: chartData.low || confidenceData.low,  // Use actual data if available
-                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
-                    borderColor: colors.low,
-                    borderWidth: 2,
-                    tension: 0.1,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Signal Confidence Trend'
-                }
+    // Handle form submission for custom symbol
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (document.getElementById('symbol').value === 'custom') {
+            const customSymbol = document.getElementById('customSymbol').value.trim();
+            if (customSymbol) {
+                // Set the custom symbol as the value for the symbol field
+                const symbolSelect = document.getElementById('symbol');
+                symbolSelect.innerHTML += `<option value="${customSymbol}" selected>${customSymbol}</option>`;
+            } else {
+                e.preventDefault();
+                alert('Please enter a valid symbol');
+            }
+        }
+    });
+    
+    // Interval and Period Relationship Suggestions
+    document.getElementById('interval').addEventListener('change', function() {
+        const periodSelect = document.getElementById('period');
+        const interval = this.value;
+        
+        // Suggest appropriate period based on selected interval
+        if (['1m', '5m'].includes(interval)) {
+            // For very short intervals, suggest shorter periods
+            if (periodSelect.value === '1y' || periodSelect.value === '2y') {
+                periodSelect.value = '1mo';
+            }
+        } else if (['1d', '1wk'].includes(interval)) {
+            // For daily/weekly data, suggest longer periods
+            if (periodSelect.value === '1d' || periodSelect.value === '5d') {
+                periodSelect.value = '3mo';
             }
         }
     });

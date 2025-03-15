@@ -40,17 +40,108 @@
                             <input type="text" class="form-control" id="customSymbol" name="customSymbol" placeholder="e.g., TSLA">
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="interval" class="form-label">Time Interval</label>
-                            <select class="form-select" id="interval" name="interval">
-                                <option value="1m">1 Minute</option>
-                                <option value="5m" selected>5 Minutes</option>
-                                <option value="15m">15 Minutes</option>
-                                <option value="30m">30 Minutes</option>
-                                <option value="60m">60 Minutes</option>
-                                <option value="1h">1 Hour</option>
-                                <option value="1d">1 Day</option>
-                            </select>
+                        <!-- Enhanced Timeframe Controls -->
+                        <div class="card mb-3 border-info">
+                            <div class="card-header bg-info text-white">
+                                <i class="fas fa-clock"></i> Timeframe Settings
+                                <button class="btn btn-sm btn-outline-light float-end" type="button" data-bs-toggle="collapse" data-bs-target="#timeframeCollapse">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="timeframeCollapse">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="interval" class="form-label">Time Interval</label>
+                                            <select class="form-select" id="interval" name="interval">
+                                                <option value="1m">1 Minute</option>
+                                                <option value="5m" selected>5 Minutes</option>
+                                                <option value="15m">15 Minutes</option>
+                                                <option value="30m">30 Minutes</option>
+                                                <option value="60m">60 Minutes</option>
+                                                <option value="1h">1 Hour</option>
+                                                <option value="1d">1 Day</option>
+                                                <option value="1wk">1 Week</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="period" class="form-label">Look-back Period</label>
+                                            <select class="form-select" id="period" name="period">
+                                                <option value="1d">1 Day</option>
+                                                <option value="5d" selected>5 Days</option>
+                                                <option value="10d">10 Days</option>
+                                                <option value="1mo">1 Month</option>
+                                                <option value="3mo">3 Months</option>
+                                                <option value="6mo">6 Months</option>
+                                                <option value="1y">1 Year</option>
+                                                <option value="2y">2 Years</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Advanced Indicator Settings -->
+                                    <div class="mt-2">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="showAdvancedSettings" 
+                                                  onchange="document.getElementById('advancedSettings').style.display = this.checked ? 'block' : 'none'">
+                                            <label class="form-check-label" for="showAdvancedSettings">
+                                                Show Advanced Indicator Settings
+                                            </label>
+                                        </div>
+                                        
+                                        <div id="advancedSettings" class="mt-3" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Moving Averages</h6>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 1</span>
+                                                        <input type="number" class="form-control" id="sma1" name="sma1" value="20" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 2</span>
+                                                        <input type="number" class="form-control" id="sma2" name="sma2" value="50" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">SMA 3</span>
+                                                        <input type="number" class="form-control" id="sma3" name="sma3" value="200" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">EMA 1</span>
+                                                        <input type="number" class="form-control" id="ema1" name="ema1" value="12" min="1" max="200">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">EMA 2</span>
+                                                        <input type="number" class="form-control" id="ema2" name="ema2" value="26" min="1" max="200">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Oscillators</h6>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">RSI</span>
+                                                        <input type="number" class="form-control" id="rsi" name="rsi" value="14" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Fast</span>
+                                                        <input type="number" class="form-control" id="macd_fast" name="macd_fast" value="12" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Slow</span>
+                                                        <input type="number" class="form-control" id="macd_slow" name="macd_slow" value="26" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">MACD Signal</span>
+                                                        <input type="number" class="form-control" id="macd_signal" name="macd_signal" value="9" min="1" max="50">
+                                                    </div>
+                                                    <div class="input-group mb-2">
+                                                        <span class="input-group-text">BB Periods</span>
+                                                        <input type="number" class="form-control" id="bb_period" name="bb_period" value="20" min="1" max="50">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="mb-3 form-check">
@@ -69,6 +160,106 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+            
+            <!-- Trading Style Options Section -->
+            <div class="card mb-3 border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-chart-bar"></i> Trading Style
+                    <button class="btn btn-sm btn-outline-light float-end" type="button" data-bs-toggle="collapse" data-bs-target="#tradingStyleCollapse">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="tradingStyleCollapse">
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Choose a trading style to customize the LLM prompt and technical indicators.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Short Term</h5>
+                                        <p class="card-text small">Intraday to few days holding period. Focuses on immediate price action.</p>
+                                        <a href="{{ url_for('generate_styled_signal', trading_style='short_term') }}?symbol={{ symbol }}&interval=15m&period=5d" class="btn btn-outline-primary">
+                                            Generate Short Term Signal
+                                        </a>
+                                    </div>
+                                    <div class="card-footer bg-light small">
+                                        Recommended for: Day Traders
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card h-100 border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Medium Term</h5>
+                                        <p class="card-text small">Few days to few weeks holding period. Balances trends and oscillators.</p>
+                                        <a href="{{ url_for('generate_styled_signal', trading_style='medium_term') }}?symbol={{ symbol }}&interval=1h&period=14d" class="btn btn-outline-success">
+                                            Generate Medium Term Signal
+                                        </a>
+                                    </div>
+                                    <div class="card-footer bg-light small">
+                                        Recommended for: Swing Traders
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card h-100 border-danger">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Long Term</h5>
+                                        <p class="card-text small">Weeks to months holding period. Focuses on major trends.</p>
+                                        <a href="{{ url_for('generate_styled_signal', trading_style='long_term') }}?symbol={{ symbol }}&interval=1d&period=60d" class="btn btn-outline-danger">
+                                            Generate Long Term Signal
+                                        </a>
+                                    </div>
+                                    <div class="card-footer bg-light small">
+                                        Recommended for: Position Traders
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>What each style emphasizes:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr class="table-light">
+                                            <th>Style</th>
+                                            <th>Key Indicators</th>
+                                            <th>Chart Interval</th>
+                                            <th>Risk/Reward</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Short Term</td>
+                                            <td>Fast MA, RSI(7), BB, Stochastic</td>
+                                            <td>5m, 15m</td>
+                                            <td>1:1 to 1:2</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Medium Term</td>
+                                            <td>SMA(20,50), RSI(14), MACD</td>
+                                            <td>1h, 4h</td>
+                                            <td>1:2 to 1:3</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Long Term</td>
+                                            <td>SMA(50,200), Major S/R</td>
+                                            <td>1d, 1w</td>
+                                            <td>1:3+</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -145,6 +336,25 @@
             } else {
                 e.preventDefault();
                 alert('Please enter a valid symbol');
+            }
+        }
+    });
+    
+    // Interval and Period Relationship Suggestions
+    document.getElementById('interval').addEventListener('change', function() {
+        const periodSelect = document.getElementById('period');
+        const interval = this.value;
+        
+        // Suggest appropriate period based on selected interval
+        if (['1m', '5m'].includes(interval)) {
+            // For very short intervals, suggest shorter periods
+            if (periodSelect.value === '1y' || periodSelect.value === '2y') {
+                periodSelect.value = '1mo';
+            }
+        } else if (['1d', '1wk'].includes(interval)) {
+            // For daily/weekly data, suggest longer periods
+            if (periodSelect.value === '1d' || periodSelect.value === '5d') {
+                periodSelect.value = '3mo';
             }
         }
     });

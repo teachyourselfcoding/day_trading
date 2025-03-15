@@ -1,0 +1,454 @@
+{% macro render_chart(symbol, data, chart_id='priceChart', height=500, width='100%') %}
+<div class="chart-container" style="height: {{ height }}px; width: {{ width }};">
+    <div id="{{ chart_id }}" class="trading-chart"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof chartData === 'undefined') {
+        console.error('Chart data not defined for {{ chart_id }}');
+        return;
+    }
+    
+    const chartElement = document.getElementById('{{ chart_id }}');
+    if (!chartElement) {
+        console.error('Chart element not found: {{ chart_id }}');
+        return;
+    }
+    
+    // Prepare candlestick data
+    const candlestick = {
+        x: chartData.datetime,
+        open: chartData.price.open,
+        high: chartData.price.high,
+        low: chartData.price.low,
+        close: chartData.price.close,
+        type: 'candlestick',
+        name: '{{ symbol }}',
+        yaxis: 'y1'
+    };
+    
+    // Prepare volume data
+    const volume = {
+        x: chartData.datetime,
+        y: chartData.price.volume,
+        type: 'bar',
+        name: 'Volume',
+        marker: { color: 'rgba(100, 100, 100, 0.3)' },
+        yaxis: 'y2',
+        visible: document.getElementById('showVolume') ? 
+                document.getElementById('showVolume').checked : true
+    };
+    
+    // Moving Averages
+    const chartTraces = [candlestick, volume];
+    
+    // Add SMA traces if available
+    if (chartData.indicators.sma_20 && document.getElementById('showSMA20') && 
+        document.getElementById('showSMA20').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.sma_20,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'SMA 20',
+            line: { color: 'blue', width: 1 }
+        });
+    }
+    
+    if (chartData.indicators.sma_50 && document.getElementById('showSMA50') && 
+        document.getElementById('showSMA50').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.sma_50,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'SMA 50',
+            line: { color: 'green', width: 1 }
+        });
+    }
+    
+    if (chartData.indicators.sma_200 && document.getElementById('showSMA200') && 
+        document.getElementById('showSMA200').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.sma_200,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'SMA 200',
+            line: { color: 'red', width: 1 }
+        });
+    }
+    
+    // Add EMA traces if available
+    if (chartData.indicators.ema_12 && document.getElementById('showEMA12') && 
+        document.getElementById('showEMA12').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.ema_12,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'EMA 12',
+            line: { color: 'purple', width: 1, dash: 'dash' }
+        });
+    }
+    
+    if (chartData.indicators.ema_26 && document.getElementById('showEMA26') && 
+        document.getElementById('showEMA26').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.ema_26,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'EMA 26',
+            line: { color: 'orange', width: 1, dash: 'dash' }
+        });
+    }
+    
+    // Add Bollinger Bands if available
+    if (chartData.indicators.bb_upper && document.getElementById('showBBUpper') && 
+        document.getElementById('showBBUpper').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.bb_upper,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'BB Upper',
+            line: { color: 'gray', width: 1 }
+        });
+    }
+    
+    if (chartData.indicators.bb_middle && document.getElementById('showBBMiddle') && 
+        document.getElementById('showBBMiddle').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.bb_middle,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'BB Middle',
+            line: { color: 'gray', width: 1, dash: 'dash' }
+        });
+    }
+    
+    if (chartData.indicators.bb_lower && document.getElementById('showBBLower') && 
+        document.getElementById('showBBLower').checked) {
+        chartTraces.push({
+            x: chartData.datetime,
+            y: chartData.indicators.bb_lower,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'BB Lower',
+            line: { color: 'gray', width: 1 }
+        });
+    }
+    
+    // Add Signal Markers
+    if (chartData.signals && document.getElementById('showSignals') && 
+        document.getElementById('showSignals').checked) {
+        
+        // Prepare trading signal markers
+        const signalMarkers = {
+            x: [],
+            y: [],
+            text: [],
+            mode: 'markers+text',
+            type: 'scatter',
+            name: 'Trading Signals',
+            marker: {
+                size: 12,
+                symbol: [],
+                color: []
+            },
+            textposition: 'top',
+            showlegend: true
+        };
+        
+        // Add buy signal markers
+        if (chartData.signals.buySellPoints) {
+            chartData.signals.buySellPoints.forEach(signal => {
+                const index = chartData.datetime.indexOf(signal.time);
+                if (index !== -1) {
+                    signalMarkers.x.push(signal.time);
+                    
+                    if (signal.action.toLowerCase() === 'buy') {
+                        signalMarkers.y.push(chartData.price.low[index] * 0.99);
+                        signalMarkers.marker.symbol.push('triangle-up');
+                        signalMarkers.marker.color.push('green');
+                        signalMarkers.text.push('BUY');
+                    } else if (signal.action.toLowerCase() === 'sell') {
+                        signalMarkers.y.push(chartData.price.high[index] * 1.01);
+                        signalMarkers.marker.symbol.push('triangle-down');
+                        signalMarkers.marker.color.push('red');
+                        signalMarkers.text.push('SELL');
+                    }
+                }
+            });
+        }
+        
+        // Add the signal markers to the chart
+        if (signalMarkers.x.length > 0) {
+            chartTraces.push(signalMarkers);
+        }
+    }
+    
+    // Define layout
+    const layout = {
+        title: '{{ symbol }} Price Chart',
+        dragmode: 'zoom',
+        showlegend: true,
+        xaxis: {
+            rangeslider: { visible: false },
+            title: 'Date'
+        },
+        yaxis: {
+            title: 'Price',
+            domain: [0.2, 1],
+            tickformat: '.2f'
+        },
+        yaxis2: {
+            title: 'Volume',
+            domain: [0, 0.15],
+            tickformat: '.0f'
+        },
+        grid: {
+            rows: 2,
+            columns: 1,
+            pattern: 'independent'
+        },
+        legend: {
+            orientation: 'h',
+            y: 1.1
+        },
+        hovermode: 'closest',
+        autosize: true
+    };
+    
+    // Create chart
+    Plotly.newPlot('{{ chart_id }}', chartTraces, layout);
+    
+    // Add zoom reset button functionality
+    document.getElementById('resetZoom')?.addEventListener('click', function() {
+        Plotly.relayout('{{ chart_id }}', {
+            'xaxis.autorange': true,
+            'yaxis.autorange': true
+        });
+    });
+});
+</script>
+{% endmacro %}
+
+{% macro render_indicator_chart(indicator_data, indicator_name, chart_id, height=200, width='100%', color='blue', threshold_values=None) %}
+<div class="chart-container mt-3" style="height: {{ height }}px; width: {{ width }};">
+    <div id="{{ chart_id }}" class="indicator-chart"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof chartData === 'undefined' || !chartData.indicators['{{ indicator_name }}']) {
+        console.error('Indicator data not found for {{ indicator_name }}');
+        return;
+    }
+    
+    const indicatorElement = document.getElementById('{{ chart_id }}');
+    if (!indicatorElement) {
+        console.error('Indicator element not found: {{ chart_id }}');
+        return;
+    }
+    
+    // Prepare indicator trace
+    const indicatorTrace = {
+        x: chartData.datetime,
+        y: chartData.indicators['{{ indicator_name }}'],
+        type: 'scatter',
+        mode: 'lines',
+        name: '{{ indicator_name|upper }}',
+        line: {
+            color: '{{ color }}',
+            width: 1.5
+        }
+    };
+    
+    // Base layout
+    const layout = {
+        title: '{{ indicator_name|upper }}',
+        xaxis: {
+            rangeslider: { visible: false }
+        },
+        yaxis: {
+            title: '{{ indicator_name|upper }}'
+        },
+        margin: {
+            t: 30,
+            b: 30,
+            l: 50,
+            r: 50
+        },
+        shapes: []
+    };
+    
+    // Add threshold lines if provided
+    {% if threshold_values %}
+    {% for threshold in threshold_values %}
+    layout.shapes.push({
+        type: 'line',
+        x0: chartData.datetime[0],
+        x1: chartData.datetime[chartData.datetime.length - 1],
+        y0: {{ threshold.value }},
+        y1: {{ threshold.value }},
+        line: {
+            color: '{{ threshold.color }}',
+            width: 1,
+            dash: 'dash'
+        }
+    });
+    {% endfor %}
+    {% endif %}
+    
+    // Create chart
+    Plotly.newPlot('{{ chart_id }}', [indicatorTrace], layout);
+});
+</script>
+{% endmacro %}
+
+{% macro render_control_panel() %}
+<div class="card mb-3">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-sliders-h"></i> Chart Controls
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <h6>Price Display</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showVolume" checked>
+                    <label class="form-check-label" for="showVolume">Show Volume</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showSignals" checked>
+                    <label class="form-check-label" for="showSignals">Show Signals</label>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <h6>Moving Averages</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showSMA20">
+                    <label class="form-check-label" for="showSMA20">SMA 20</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showSMA50">
+                    <label class="form-check-label" for="showSMA50">SMA 50</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showSMA200">
+                    <label class="form-check-label" for="showSMA200">SMA 200</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showEMA12">
+                    <label class="form-check-label" for="showEMA12">EMA 12</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showEMA26">
+                    <label class="form-check-label" for="showEMA26">EMA 26</label>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <h6>Bollinger Bands</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showBBUpper">
+                    <label class="form-check-label" for="showBBUpper">Upper Band</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showBBMiddle">
+                    <label class="form-check-label" for="showBBMiddle">Middle Band</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showBBLower">
+                    <label class="form-check-label" for="showBBLower">Lower Band</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6>Indicators</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showRSI">
+                    <label class="form-check-label" for="showRSI">RSI</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="showMACD">
+                    <label class="form-check-label" for="showMACD">MACD</label>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="d-grid gap-2">
+                    <button id="resetZoom" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-expand-arrows-alt"></i> Reset Zoom
+                    </button>
+                    <button id="exportChartBtn" class="btn btn-info btn-sm">
+                        <i class="fas fa-download"></i> Export Chart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Control panel JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up event listeners for all checkboxes
+    const checkboxIds = [
+        'showVolume', 'showSignals', 
+        'showSMA20', 'showSMA50', 'showSMA200', 
+        'showEMA12', 'showEMA26',
+        'showBBUpper', 'showBBMiddle', 'showBBLower',
+        'showRSI', 'showMACD'
+    ];
+    
+    checkboxIds.forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+            checkbox.addEventListener('change', function() {
+                // This will trigger a redraw when controls are changed
+                updateChartVisibility();
+            });
+        }
+    });
+    
+    // Function to update chart visibility based on controls
+    function updateChartVisibility() {
+        // Main chart components
+        const showRSI = document.getElementById('showRSI')?.checked || false;
+        const showMACD = document.getElementById('showMACD')?.checked || false;
+        
+        // Update RSI display
+        const rsiChart = document.getElementById('rsiChartContainer');
+        if (rsiChart) rsiChart.style.display = showRSI ? 'block' : 'none';
+        
+        // Update MACD display
+        const macdChart = document.getElementById('macdChartContainer');
+        if (macdChart) macdChart.style.display = showMACD ? 'block' : 'none';
+        
+        // Note: The main chart traces are updated through Plotly.update
+        // But would require more complex handling
+    }
+    
+    // Export chart functionality
+    document.getElementById('exportChartBtn')?.addEventListener('click', function() {
+        const mainChart = document.getElementById('priceChart');
+        if (mainChart) {
+            Plotly.downloadImage(mainChart, {
+                format: 'png',
+                filename: 'trading-chart',
+                height: 800,
+                width: 1200
+            });
+        }
+    });
+});
+</script>
+{% endmacro %}

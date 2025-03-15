@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% from "chart_macros.html" import render_chart, render_indicator_chart, render_control_panel %}
+
+{% block title %}{{ symbol }} Signal Detail | Trading Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signal-badge {
+        font-size: 1.2rem;
+        padding: 0.5rem 1rem;
+        border-radius: 1rem;
+    }
+    .confidence-badge {
+        font-size: 0.9rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 0.8rem;
+    }
+    .signal-metric {
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+    .signal-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .price-block {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: #f8f9fa;
+        margin-bottom: 1rem;
+    }
+    .price-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .price-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .indicator-card {
+        border-left: 5px solid;
+        border-radius: 0.5rem;
+        padding: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    .indicator-bullish {
+        border-left-color: #198754;
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+    .indicator-bearish {
+        border-left-color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+    .indicator-neutral {
+        border-left-color: #ffc107;
+        background-color: rgba(255, 193, 7, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Signal header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h2">
+                {{ symbol }} 
+                <span class="badge {% if signal.suggested_action|lower == 'buy' %}bg-success{% elif signal.suggested_action|lower == 'sell' %}bg-danger{% else %}bg-warning{% endif %} signal-badge">
+                    {{ signal.suggested_action }}
+                </span>
+                <span class="badge {% if signal.pattern_confidence|lower == 'high' %}bg-success{% elif signal.pattern_confidence|lower == 'medium' %}bg-warning{% else %}bg-danger{% endif %} confidence-badge">
+                    {{ signal.pattern_confidence }} Confidence
+                </span>
+            </h1>
+            <p class="text-muted">
+                {{ signal.pattern_identified }} | Generated: {{ signal.metadata.generated_at|format_date if signal.metadata and signal.metadata.generated_at else signal.date|format_date }}
+            </p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('get_symbol_signals', symbol=symbol) }}" class="btn btn-outline-primary">
+                <i class="fas fa-history"></i> Signal History
+            </a>
+            <a href="{{ url_for('scan') }}?symbol={{ symbol }}" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i> New Scan
+            </a>
+        </div>
+    </div>
+    
+    <!-- Price targets -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="price-block">
+                <div class="price-label">Entry Price</div>
+                <div class="price-value">{{ signal.entry_price }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="price-block">
+                <div class="price-label">Current Price</div>
+                <div class="price-value" id="currentPrice">Loading...</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="price-block" style="border: 2px solid #dc3545;">
+                <div class="price-label text-danger">Stop Loss</div>
+                <div class="price-value text-danger">{{ signal.stop_loss }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="price-block" style="border: 2px solid #198754;">
+                <div class="price-label text-success">Take Profit</div>
+                <div class="price-value text-success">{{ signal.take_profit }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chart controls and chart -->
+    <div class="row">
+        <div class="col-md-3">
+            {{ render_control_panel() }}
+            
+            <!-- Technical Indicators Summary -->
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-chart-line"></i> Technical Indicators
+                </div>
+                <div class="card-body">
+                    {% if technical_data %}
+                        {% if technical_data.trend_analysis %}
+                            <div class="indicator-card {% if 'up' in technical_data.trend_analysis.direction|lower %}indicator-bullish{% elif 'down' in technical_data.trend_analysis.direction|lower %}indicator-bearish{% else %}indicator-neutral{% endif %}">
+                                <h6>Trend Analysis</h6>
+                                <p class="mb-1"><strong>Direction:</strong> {{ technical_data.trend_analysis.direction }}</p>
+                                <p class="mb-1"><strong>Strength:</strong> {{ technical_data.trend_analysis.strength }}%</p>
+                                {% if technical_data.trend_analysis.momentum %}
+                                    <p class="mb-1"><strong>Momentum:</strong> {{ technical_data.trend_analysis.momentum }}</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if technical_data.oscillators and technical_data.oscillators.rsi %}
+                            <div class="indicator-card {% if technical_data.oscillators.rsi.signal == 'Oversold' %}indicator-bullish{% elif technical_data.oscillators.rsi.signal == 'Overbought' %}indicator-bearish{% else %}indicator-neutral{% endif %}">
+                                <h6>RSI</h6>
+                                <p class="mb-1"><strong>Current:</strong> {{ technical_data.oscillators.rsi.current }}</p>
+                                <p class="mb-1"><strong>Signal:</strong> {{ technical_data.oscillators.rsi.signal }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if technical_data.oscillators and technical_data.oscillators.macd %}
+                            <div class="indicator-card {% if technical_data.oscillators.macd.signal == 'Bullish' %}indicator-bullish{% else %}indicator-bearish{% endif %}">
+                                <h6>MACD</h6>
+                                <p class="mb-1"><strong>MACD Line:</strong> {{ technical_data.oscillators.macd.macd_line }}</p>
+                                <p class="mb-1"><strong>Signal Line:</strong> {{ technical_data.oscillators.macd.signal_line }}</p>
+                                <p class="mb-1"><strong>Signal:</strong> {{ technical_data.oscillators.macd.signal }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if technical_data.overall_summary %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i> <strong>Summary:</strong> {{ technical_data.overall_summary }}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-center">No technical data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <!-- Main price chart -->
+            {{ render_chart(symbol, chart_data, 'priceChart', 500) }}
+            
+            <!-- RSI chart -->
+            <div class="mt-3" id="rsiChartContainer" style="display: none;">
+                {{ render_indicator_chart(chart_data, 'rsi', 'rsiChart', 200, '100%', 'purple', 
+                   [{'value': 70, 'color': 'red'}, {'value': 30, 'color': 'green'}]) }}
+            </div>
+            
+            <!-- MACD chart -->
+            <div class="mt-3" id="macdChartContainer" style="display: none;">
+                <div class="chart-container" style="height: 200px;">
+                    <div id="macdChart" class="indicator-chart"></div>
+                </div>
+                
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (typeof chartData === 'undefined' || !chartData.indicators.macd) {
+                            console.error('MACD data not found');
+                            return;
+                        }
+                        
+                        const macdElement = document.getElementById('macdChart');
+                        if (!macdElement) {
+                            console.error('MACD element not found');
+                            return;
+                        }
+                        
+                        // MACD line
+                        const macdLine = {
+                            x: chartData.datetime,
+                            y: chartData.indicators.macd,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'MACD',
+                            line: { color: 'blue', width: 1.5 }
+                        };
+                        
+                        // Signal line
+                        const signalLine = {
+                            x: chartData.datetime,
+                            y: chartData.indicators.macd_signal,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Signal',
+                            line: { color: 'red', width: 1.5 }
+                        };
+                        
+                        // Histogram
+                        const histColors = [];
+                        for (let i = 0; i < chartData.indicators.macd_hist.length; i++) {
+                            histColors.push(chartData.indicators.macd_hist[i] >= 0 ? 'green' : 'red');
+                        }
+                        
+                        const histogram = {
+                            x: chartData.datetime,
+                            y: chartData.indicators.macd_hist,
+                            type: 'bar',
+                            name: 'Histogram',
+                            marker: { color: histColors }
+                        };
+                        
+                        // Layout
+                        const layout = {
+                            title: 'MACD',
+                            xaxis: { rangeslider: { visible: false } },
+                            yaxis: { title: 'MACD' },
+                            margin: { t: 30, b: 30, l: 50, r: 50 }
+                        };
+                        
+                        // Create chart
+                        Plotly.newPlot('macdChart', [macdLine, signalLine, histogram], layout);
+                    });
+                </script>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Signal details -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-chart-pie"></i> Signal Analysis
+                </div>
+                <div class="card-body">
+                    <h5>{{ signal.pattern_identified }}</h5>
+                    <p>{{ signal.reasoning }}</p>
+                    
+                    {% if signal.metadata and signal.metadata.timeframe %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-clock"></i> <strong>Timeframe:</strong> {{ signal.metadata.timeframe }}
+                        </div>
+                    {% endif %}
+                    
+                    <h6 class="mt-4">Risk/Reward Analysis</h6>
+                    <div class="row">
+                        <div class="col">
+                            <div class="card bg-light">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Risk:</span>
+                                        <span id="riskAmount" class="text-danger fw-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card bg-light">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Reward:</span>
+                                        <span id="rewardAmount" class="text-success fw-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card bg-light">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Ratio:</span>
+                                        <span id="riskRewardRatio" class="fw-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-lightbulb"></i> LLM Signal Explanation
+                </div>
+                <div class="card-body">
+                    {% if signal.extended_analysis %}
+                        {{ signal.extended_analysis|safe }}
+                    {% else %}
+                        <p>{{ signal.reasoning }}</p>
+                        
+                        <h6 class="mt-3">Technical Indicators Referenced:</h6>
+                        <ul>
+                            {% if 'moving average' in signal.reasoning|lower or 'ma' in signal.reasoning|lower or 'sma' in signal.reasoning|lower or 'ema' in signal.reasoning|lower %}
+                                <li>Moving Averages</li>
+                            {% endif %}
+                            
+                            {% if 'rsi' in signal.reasoning|lower %}
+                                <li>Relative Strength Index (RSI)</li>
+                            {% endif %}
+                            
+                            {% if 'macd' in signal.reasoning|lower %}
+                                <li>MACD</li>
+                            {% endif %}
+                            
+                            {% if 'bollinger' in signal.reasoning|lower %}
+                                <li>Bollinger Bands</li>
+                            {% endif %}
+                            
+                            {% if 'stochastic' in signal.reasoning|lower %}
+                                <li>Stochastic Oscillator</li>
+                            {% endif %}
+                            
+                            {% if 'support' in signal.reasoning|lower or 'resistance' in signal.reasoning|lower %}
+                                <li>Support/Resistance Levels</li>
+                            {% endif %}
+                        </ul>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h6>Signal Metadata:</h6>
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th>Model:</th>
+                                    <td>{{ signal.metadata.model if signal.metadata and signal.metadata.model else "GPT-4" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Trading Style:</th>
+                                    <td>{{ signal.metadata.trading_style if signal.metadata and signal.metadata.trading_style else "Medium Term" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Interval:</th>
+                                    <td>{{ signal.metadata.interval if signal.metadata and signal.metadata.interval else interval }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Generated:</th>
+                                    <td>{{ signal.metadata.generated_at|format_date if signal.metadata and signal.metadata.generated_at else signal.date|format_date }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Global chart data 
+    let chartData = {{ chart_data|tojson|safe }};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up chart control listeners
+        document.getElementById('showRSI')?.addEventListener('change', function() {
+            document.getElementById('rsiChartContainer').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        document.getElementById('showMACD')?.addEventListener('change', function() {
+            document.getElementById('macdChartContainer').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Calculate risk/reward ratio
+        calculateRiskReward();
+        
+        // Fetch current price if needed
+        updateCurrentPrice();
+    });
+    
+    function calculateRiskReward() {
+        const entryPrice = parseFloat("{{ signal.entry_price }}".replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat("{{ signal.stop_loss }}".replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat("{{ signal.take_profit }}".replace(/[^0-9.-]+/g, ""));
+        
+        if (!isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(takeProfit)) {
+            let risk, reward;
+            
+            if ("{{ signal.suggested_action|lower }}" === "buy") {
+                risk = entryPrice - stopLoss;
+                reward = takeProfit - entryPrice;
+            } else {
+                risk = stopLoss - entryPrice;
+                reward = entryPrice - takeProfit;
+            }
+            
+            const ratio = (reward / risk).toFixed(2);
+            
+            document.getElementById('riskAmount').innerText = Math.abs(risk).toFixed(2);
+            document.getElementById('rewardAmount').innerText = Math.abs(reward).toFixed(2);
+            document.getElementById('riskRewardRatio').innerText = ratio;
+            
+            // Color the ratio based on value
+            const ratioElement = document.getElementById('riskRewardRatio');
+            if (parseFloat(ratio) >= 2) {
+                ratioElement.classList.add('text-success');
+            } else if (parseFloat(ratio) >= 1) {
+                ratioElement.classList.add('text-warning');
+            } else {
+                ratioElement.classList.add('text-danger');
+            }
+        }
+    }
+    
+    function updateCurrentPrice() {
+        // In a real implementation, you would fetch the current price from an API
+        // For demonstration, we're using the last price from the chart data
+        if (chartData && chartData.price && chartData.price.close && chartData.price.close.length > 0) {
+            const lastPrice = chartData.price.close[chartData.price.close.length - 1];
+            document.getElementById('currentPrice').innerText = lastPrice.toFixed(2);
+            
+            // Highlight if price is above/below entry
+            const entryPrice = parseFloat("{{ signal.entry_price }}".replace(/[^0-9.-]+/g, ""));
+            if (!isNaN(entryPrice)) {
+                if (lastPrice > entryPrice) {
+                    document.getElementById('currentPrice').classList.add('text-success');
+                } else if (lastPrice < entryPrice) {
+                    document.getElementById('currentPrice').classList.add('text-danger');
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
