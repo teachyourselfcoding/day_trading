@@ -34,7 +34,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Directly call loadSymbolData to load data and display charts
             loadSymbolData();
+        
         });
+
+        setupCheckboxListeners();
 
     } else {
         console.error('Load data button not found');
