@@ -1,0 +1,14 @@
+{
+  "raw_response": "{\n  \"pattern_identified\": \"Uptrend\",\n  \"pattern_confidence\": \"medium\",\n  \"suggested_action\": \"buy\",\n  \"entry_price\": \"388.48\",\n  \"stop_loss\": \"382.34\",\n  \"take_profit\": \"389.79\",\n  \"risk_reward_ratio\": \"1.22\",\n  \"reasoning\": \"The price is in an uptrend with bullish signals from SMA 20, SMA 50, and MACD. The RSI is in neutral territory, suggesting there is room for further price increase. The volume trend is increasing, indicating strong buying interest.\",\n  \"alternative_scenario\": \"A break below the support level of 382.34 could invalidate this analysis and suggest a bearish reversal.\",\n  \"timeframe\": \"5-20 days\"\n}\n\nIn my analysis, I identified an uptrend pattern with medium confidence. The key technical indicators that influenced my decision were the SMA 20, SMA 50, and MACD, all of which showed bullish signals. The RSI is in neutral territory, suggesting there is room for further price increase. The volume trend is also increasing, indicating strong buying interest. \n\nIn terms of risk assessment, I have set the stop loss at the support level of 382.34, which provides a favorable risk-reward ratio of 1.22. The entry price is the current price of 388.48, and the target is the high of the period at 389.79. \n\nThe alternative scenario that could invalidate this analysis is a break below the support level of 382.34, which could suggest a bearish reversal.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend\",",
+  "\"pattern_confidence\"": "\"medium\",",
+  "\"suggested_action\"": "\"buy\",",
+  "\"entry_price\"": "\"388.48\",",
+  "\"stop_loss\"": "\"382.34\",",
+  "\"take_profit\"": "\"389.79\",",
+  "\"risk_reward_ratio\"": "\"1.22\",",
+  "\"reasoning\"": "\"The price is in an uptrend with bullish signals from SMA 20, SMA 50, and MACD. The RSI is in neutral territory, suggesting there is room for further price increase. The volume trend is increasing, indicating strong buying interest.\",",
+  "\"alternative_scenario\"": "\"A break below the support level of 382.34 could invalidate this analysis and suggest a bearish reversal.\",",
+  "\"timeframe\"": "\"5-20 days\""
+}

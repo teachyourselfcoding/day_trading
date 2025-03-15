@@ -1,0 +1,14 @@
+{
+  "raw_response": "{\n  \"pattern_identified\": \"Uptrend\",\n  \"pattern_confidence\": \"medium\",\n  \"suggested_action\": \"buy\",\n  \"entry_price\": \"213.38\",\n  \"stop_loss\": \"208.42\",\n  \"take_profit\": \"217.97\",\n  \"risk_reward_ratio\": \"1.09\",\n  \"reasoning\": \"The price is in an uptrend with bullish signals from SMA 20, SMA 50, and MACD. The RSI is neutral, suggesting the price is not overbought. The volume trend is increasing, indicating strong buying interest.\",\n  \"alternative_scenario\": \"A break below the stop loss level could indicate a reversal of the uptrend.\",\n  \"timeframe\": \"5-20 days\"\n}\n\nIn my analysis, I identified an uptrend pattern with medium confidence. The key technical indicators that influenced my decision were the SMA 20, SMA 50, and MACD, all of which showed bullish signals. The RSI is in neutral territory, suggesting the price is not overbought, and the volume trend is increasing, indicating strong buying interest. I chose the current price as the entry point, the low of the period as the stop loss, and the identified resistance level as the target. This provides a favorable risk-reward ratio of 1.09. However, a break below the stop loss level could indicate a reversal of the uptrend.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend\",",
+  "\"pattern_confidence\"": "\"medium\",",
+  "\"suggested_action\"": "\"buy\",",
+  "\"entry_price\"": "\"213.38\",",
+  "\"stop_loss\"": "\"208.42\",",
+  "\"take_profit\"": "\"217.97\",",
+  "\"risk_reward_ratio\"": "\"1.09\",",
+  "\"reasoning\"": "\"The price is in an uptrend with bullish signals from SMA 20, SMA 50, and MACD. The RSI is neutral, suggesting the price is not overbought. The volume trend is increasing, indicating strong buying interest.\",",
+  "\"alternative_scenario\"": "\"A break below the stop loss level could indicate a reversal of the uptrend.\",",
+  "\"timeframe\"": "\"5-20 days\""
+}

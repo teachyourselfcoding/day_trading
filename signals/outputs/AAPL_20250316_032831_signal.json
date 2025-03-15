@@ -1,0 +1,11 @@
+{
+  "raw_response": "{\n    \"pattern_identified\": \"Uptrend with bullish signals\",\n    \"confidence\": \"medium\",\n    \"action\": \"buy\",\n    \"entry_price\": \"213.38\",\n    \"stop_loss\": \"208.42\",\n    \"take_profit\": \"217.97\",\n    \"timeframe\": \"1-2 weeks\"\n}\n\nThe technical analysis indicates that AAPL is currently in an uptrend, with the price above both the 20 and 50 period simple moving averages (SMA), which are bullish signals. The Moving Average Convergence Divergence (MACD) is also above its signal line, another bullish signal. The Relative Strength Index (RSI) is in neutral territory, indicating that the stock is neither overbought nor oversold. The volume trend is increasing, which could indicate growing investor interest. However, the momentum is bearish, which could indicate a potential reversal in the near future. Therefore, the confidence level is medium. The suggested action is to buy at the current price of $213.38, with a stop loss at the low of the period at $208.42, and a take profit at the identified resistance level of $217.97. The expected timeframe for this trade is 1-2 weeks.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend with bullish signals\",",
+  "\"confidence\"": "\"medium\",",
+  "\"action\"": "\"buy\",",
+  "\"entry_price\"": "\"213.38\",",
+  "\"stop_loss\"": "\"208.42\",",
+  "\"take_profit\"": "\"217.97\",",
+  "\"timeframe\"": "\"1-2 weeks\""
+}

@@ -1,0 +1,15 @@
+{
+  "pattern_identified": "Uptrend",
+  "pattern_confidence": "medium",
+  "suggested_action": "buy",
+  "entry_price": "607.57",
+  "stop_loss": "604.64",
+  "take_profit": "633.33",
+  "reasoning": "The META price is in a medium-term uptrend with 3 bullish signals and 0 bearish signals. The price is above both the SMA 20 and SMA 50, indicating bullish sentiment. The MACD is also above the signal line, further supporting the bullish trend. The RSI is in neutral territory, suggesting there is room for the price to move upwards before becoming overbought. The price has decreased slightly over the analyzed period, potentially offering a good entry point.",
+  "timeframe": "1-2 weeks",
+  "metadata": {
+    "symbol": "META",
+    "model": "gpt-4",
+    "temperature": 0
+  }
+}
