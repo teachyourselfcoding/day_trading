@@ -9,17 +9,6 @@ from src.utils.logger import signals_logger
 
 
 def prepare_medium_term_prompt(data, symbol, interval):
-    """
-    Prepare a prompt for medium-term trading analysis with a defined role for the LLM.
-    
-    Args:
-        data (dict): Data dictionary with 'bars' key containing price data
-        symbol (str): Stock symbol
-        interval (str): Time interval
-    
-    Returns:
-        str: JSON prompt for OpenAI
-    """
     try:
         # First, make sure we have data to work with
         if not data or 'bars' not in data or not data['bars']:
@@ -71,12 +60,12 @@ def prepare_medium_term_prompt(data, symbol, interval):
                 "pattern_identified": "<pattern_name>",
                 "pattern_confidence": "<low/medium/high>",
                 "suggested_action": "<buy/sell/hold>",
-                "entry_price": "<suggested_entry>",
-                "stop_loss": "<suggested_stop_loss>",
-                "take_profit": "<suggested_take_profit>",
+                "entry_price": "<calculated_entry_price>",
+                "stop_loss": "<calculated_stop_loss>",
+                "take_profit": "<calculated_take_profit>",
                 "risk_reward_ratio": "<calculated_ratio>",
                 "reasoning": "<evidence-based_reasoning_for_decision>",
-                "alternative_scenario": "<what_could_invalidate_this_analysis>",
+                "alternative_scenario": "<conditions_which_invalidate_the_analysis>",
                 "timeframe": "<expected_holding_period>"
             }
         }
@@ -309,6 +298,17 @@ def prepare_medium_term_prompt(data, symbol, interval):
                 summary += f"Price has shown a {strength} breakdown below the {level} support level. "
         
         prompt["technical_analysis"]["overall_summary"] = summary
+
+        # ----------------------------------------------------------------
+        # Add additional guidelines for the LLM to improve the analysis:
+        prompt["analysis_guidelines"] = {
+            "entry_stop_tp": "Calculate a specific entry price using technical levels and recent volatility instead of simply using the current price. Likewise, determine stop loss and take profit levels based on a defined risk-reward ratio.",
+            "bearish_pressure": "Explain bearish pressure clearly by discussing its impact on trend strength and how it might conflict with bullish signals, including the implications for the trade setup.",
+            "resistance_breakout": "If the current price exceeds identified resistance levels, explicitly state that a resistance breakout has occurred, differentiating between a true breakout and a potential fakeout.",
+            "alternative_scenario": "Detail alternative scenarios by explaining that a break below the calculated stop loss would invalidate the analysis, thus requiring re-assessment of the trade.",
+            "risk_reward": "Provide refined risk-reward calculations by explicitly computing the ratio based on the differences between the calculated entry price, stop loss, and take profit levels."
+        }
+        # ----------------------------------------------------------------
         
         # Convert to JSON string
         return json.dumps(prompt, indent=2)
@@ -316,6 +316,7 @@ def prepare_medium_term_prompt(data, symbol, interval):
     except Exception as e:
         signals_logger.error(f"Error preparing medium_term prompt for {symbol}: {e}")
         return None
+
     
 def prepare_short_term_prompt(data, symbol, interval):
     """

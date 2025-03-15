@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-03-16T03:54:58Z",
+  "timestamp": "2025-03-16T04:08:21Z",
   "symbols_processed": 5,
   "signals_generated": 5,
   "interval": "5m",
@@ -7,29 +7,29 @@
   "trading_style": "medium_term",
   "signals_summary": {
     "AAPL": {
-      "action": "Buy",
-      "confidence": "Medium",
-      "pattern": "Bullish Uptrend"
+      "action": "buy",
+      "confidence": "medium",
+      "pattern": "Uptrend with bearish momentum"
     },
     "MSFT": {
       "action": "Buy",
       "confidence": "Medium",
-      "pattern": "Uptrend"
+      "pattern": "Uptrend Continuation"
     },
     "AMZN": {
-      "action": "Buy",
-      "confidence": "Medium",
-      "pattern": "Uptrend"
+      "action": "unknown",
+      "confidence": "unknown",
+      "pattern": "unknown"
     },
     "GOOGL": {
-      "action": "Buy",
-      "confidence": "Medium",
-      "pattern": "Uptrend with increasing volume"
+      "action": "unknown",
+      "confidence": "unknown",
+      "pattern": "unknown"
     },
     "META": {
-      "action": "Buy",
-      "confidence": "Medium",
-      "pattern": "Bullish Swing"
+      "action": "unknown",
+      "confidence": "unknown",
+      "pattern": "unknown"
     }
   }
 }
