@@ -13,7 +13,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from data.tradingview import fetch_intraday_data
-from prompts.intraday_prompt import prepare_medium_term_prompt, prepare_short_term_prompt, prepare_long_term_prompt
+from prompts.intraday_prompt import prepare_medium_term_prompt
 from signals.llm_signals import get_trading_signal
 from src.utils.file_utils import create_directories
 from src.utils.logger import main_logger

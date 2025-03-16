@@ -1,0 +1,11 @@
+{
+  "raw_response": "{\n    \"pattern_identified\": \"Uptrend with Bullish Momentum\",\n    \"confidence\": \"medium\",\n    \"action\": \"buy\",\n    \"entry_price\": \"608.26\",\n    \"stop_loss\": \"604.34\",\n    \"take_profit\": \"633.33\",\n    \"timeframe\": \"1-2 weeks\"\n}\n\nThe technical analysis indicates that META is currently in an uptrend, with the price above both the 20 and 50 period simple moving averages (SMA), which are bullish signals. The Moving Average Convergence Divergence (MACD) is also above its signal line, indicating bullish momentum. The Relative Strength Index (RSI) is in neutral territory, suggesting the stock is not overbought or oversold. The Stochastic Oscillator %K is above %D, which is a bullish signal. The volume trend is increasing, which can indicate strong demand for the stock. Given these indicators, a medium confidence buy recommendation is suggested with an entry price at the current price, a stop loss at the identified support level, and a take profit at the high of the period. The expected timeframe for this trade is 1-2 weeks.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend with Bullish Momentum\",",
+  "\"confidence\"": "\"medium\",",
+  "\"action\"": "\"buy\",",
+  "\"entry_price\"": "\"608.26\",",
+  "\"stop_loss\"": "\"604.34\",",
+  "\"take_profit\"": "\"633.33\",",
+  "\"timeframe\"": "\"1-2 weeks\""
+}

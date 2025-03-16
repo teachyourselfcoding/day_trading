@@ -1,0 +1,11 @@
+{
+  "raw_response": "{\n    \"pattern_identified\": \"Uptrend with bullish momentum\",\n    \"confidence\": \"medium\",\n    \"action\": \"buy\",\n    \"entry_price\": \"198.00\",\n    \"stop_loss\": \"196.04\",\n    \"take_profit\": \"201.52\",\n    \"timeframe\": \"1-2 weeks\"\n}\n\nThe technical analysis indicates that AMZN is currently in an uptrend, with the price above both the 20 and 50 period simple moving averages (SMA), which are bullish signals. The Moving Average Convergence Divergence (MACD) is also above its signal line, indicating bullish momentum. The Relative Strength Index (RSI) is in neutral territory, suggesting the stock is not overbought at the current price. The volume trend is increasing, which could indicate growing investor interest. The stop loss is set at the identified support level, while the take profit is set at the high of the period. The expected timeframe for this trade is 1-2 weeks, based on the medium-term trend and momentum.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend with bullish momentum\",",
+  "\"confidence\"": "\"medium\",",
+  "\"action\"": "\"buy\",",
+  "\"entry_price\"": "\"198.00\",",
+  "\"stop_loss\"": "\"196.04\",",
+  "\"take_profit\"": "\"201.52\",",
+  "\"timeframe\"": "\"1-2 weeks\""
+}

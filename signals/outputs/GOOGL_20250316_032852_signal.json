@@ -1,0 +1,11 @@
+{
+  "raw_response": "{\n    \"pattern_identified\": \"Uptrend with bullish signals\",\n    \"confidence\": \"medium\",\n    \"action\": \"buy\",\n    \"entry_price\": \"165.44\",\n    \"stop_loss\": \"164.75\",\n    \"take_profit\": \"168.46\",\n    \"timeframe\": \"1-2 weeks\"\n}\n\nThe technical analysis indicates that GOOGL is in an uptrend, with the price above both the 20 and 50 period simple moving averages (SMA), which are bullish signals. The Moving Average Convergence Divergence (MACD) is also above its signal line, another bullish sign. The Relative Strength Index (RSI) is in neutral territory, suggesting the stock is not overbought or oversold. The volume trend is increasing, which could indicate growing investor interest. However, the trend's momentum is bearish, which could suggest a potential reversal. Therefore, the confidence level is medium. The suggested action is to buy at the current price of 165.44, with a stop loss at the identified support level of 164.75 and a take profit at the high of the period at 168.46. The expected timeframe for this trade is 1-2 weeks.",
+  "error": "Could not parse as JSON",
+  "\"pattern_identified\"": "\"Uptrend with bullish signals\",",
+  "\"confidence\"": "\"medium\",",
+  "\"action\"": "\"buy\",",
+  "\"entry_price\"": "\"165.44\",",
+  "\"stop_loss\"": "\"164.75\",",
+  "\"take_profit\"": "\"168.46\",",
+  "\"timeframe\"": "\"1-2 weeks\""
+}
