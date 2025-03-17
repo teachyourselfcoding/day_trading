@@ -67,7 +67,24 @@ def prepare_medium_term_prompt(data, symbol, interval):
                 "reasoning": "<evidence-based_reasoning_for_decision>",
                 "alternative_scenario": "<conditions_which_invalidate_the_analysis>",
                 "timeframe": "<expected_holding_period>"
-            }
+            },
+            "response_instructions" : {
+            "format": "Please provide your analysis as a valid JSON object that matches the expected_response_format exactly.",
+            "requirements": "Ensure all fields are included in your response, including the symbol, pattern_identified, pattern_confidence, and suggested_action.",
+            "example": {
+                "pattern_identified": "Uptrend Continuation",
+                "pattern_confidence": "medium",
+                "suggested_action": "buy",
+                "entry_price": "388.50",
+                "stop_loss": "382.34",
+                "take_profit": "394.00",
+                "risk_reward_ratio": "1:1.1",
+                "reasoning": "Price is in an uptrend with bullish signals from the SMA 20, SMA 50, and MACD.",
+                "alternative_scenario": "If price falls below 382.34, analysis is invalidated.",
+                "timeframe": "5-20 days"
+            },
+            "important_note": "Respond ONLY with the JSON object. Do not include any additional text, explanations, or markdown formatting outside the JSON structure."
+        }
         }
         
         # Add technical indicators if available
@@ -406,9 +423,13 @@ def prepare_llm_prompt(data, symbol, interval, trading_style="medium_term"):
             "entry_price": "<suggested_entry>",
             "stop_loss": "<suggested_stop_loss>",
             "take_profit": "<suggested_take_profit>",
+            "risk_reward_ratio": "<calculated_ratio>",
             "reasoning": "<brief_reasoning_for_decision>",
+            "alternative_scenario": "<conditions_which_invalidate_the_analysis>",
             "timeframe": "<expected_holding_period>"
         }
+
+        
     }
     
     return json.dumps(prompt)

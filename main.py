@@ -85,13 +85,8 @@ def process_symbol(symbol, interval=DEFAULT_INTERVAL, period=DEFAULT_PERIOD,
             main_logger.info(f"Generated trading signal for {symbol}")
             main_logger.info(f"Action: {trading_signal.get('suggested_action', 'unknown')}")
             
-            # Save to a more user-friendly file name
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            file_path = os.path.join(OUTPUTS_DIR, f"{symbol}_{timestamp}_signal.json")
-            with open(file_path, 'w') as f:
-                json.dump(trading_signal, f, indent=2)
             
-            # Add timeframe and trading style information to the trading signal
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             if isinstance(trading_signal, dict):
                 trading_signal.setdefault('metadata', {}).update({
                     'interval': interval,
@@ -100,6 +95,9 @@ def process_symbol(symbol, interval=DEFAULT_INTERVAL, period=DEFAULT_PERIOD,
                     'trading_style': trading_style,
                     'timestamp': timestamp  # Add timestamp for referencing this specific signal
                 })
+                
+                # Log the saved file path but don't save again
+                main_logger.info(f"Trading signal metadata updated for {symbol}")
             
             # Step 5: Execute trade if requested (and implemented)
             if execute:
