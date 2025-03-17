@@ -307,3 +307,221 @@ def get_timeframe_adjusted_settings(interval):
         settings['atr'] = 14
     
     return settings
+
+def analyze_volume(data, periods=10):
+    """
+    Analyze volume patterns from price data.
+    
+    Args:
+        data (dict): Data dictionary with 'bars' key containing price data
+        periods (int): Number of periods to analyze
+        
+    Returns:
+        dict: Volume analysis information
+    """
+    try:
+        # Handle different input formats
+        if isinstance(data, dict) and 'bars' in data:
+            bars = data['bars']
+        elif isinstance(data, list):
+            bars = data
+        else:
+            analysis_logger.warning("Invalid data format for volume analysis")
+            return None
+            
+        if not bars or len(bars) < periods:
+            analysis_logger.warning(f"Not enough bars for volume analysis (need {periods}, have {len(bars) if bars else 0})")
+            return None
+        
+        # Extract recent volumes
+        recent_volumes = [bar['v'] for bar in bars[-periods:]]
+        avg_volume = sum(recent_volumes) / len(recent_volumes)
+        latest_volume = bars[-1]['v']
+        
+        # Determine if volume is increasing or decreasing
+        if latest_volume > avg_volume * 1.2:
+            volume_trend = "Increasing"
+        elif latest_volume < avg_volume * 0.8:
+            volume_trend = "Decreasing"
+        else:
+            volume_trend = "Stable"
+        
+        # Check for volume spike
+        volume_spike = latest_volume > avg_volume * 2
+        
+        # Check for volume divergence (price up, volume down or vice versa)
+        price_change = bars[-1]['c'] - bars[-2]['c']
+        prev_volume = bars[-2]['v']
+        volume_change = latest_volume - prev_volume
+        
+        divergence = None
+        if price_change > 0 and volume_change < 0:
+            divergence = "Bearish (price up, volume down)"
+        elif price_change < 0 and volume_change > 0:
+            divergence = "Bearish (price down, volume up)"
+        elif price_change > 0 and volume_change > 0:
+            divergence = "Bullish (price up, volume up)"
+        elif price_change < 0 and volume_change < 0:
+            divergence = "Bullish (price down, volume down)"
+            
+        # Calculate volume-weighted average price (VWAP) if needed
+        vwap = None
+        if all('o' in bar and 'h' in bar and 'l' in bar and 'c' in bar and 'v' in bar for bar in bars[-periods:]):
+            try:
+                typical_prices = [(bar['h'] + bar['l'] + bar['c']) / 3 for bar in bars[-periods:]]
+                volumes = [bar['v'] for bar in bars[-periods:]]
+                vwap = sum(tp * vol for tp, vol in zip(typical_prices, volumes)) / sum(volumes)
+            except Exception as e:
+                analysis_logger.warning(f"Failed to calculate VWAP: {e}")
+        
+        result = {
+            "average_period": avg_volume,
+            "current_volume": latest_volume,
+            "volume_trend": volume_trend,
+            "volume_spike": volume_spike,
+            "divergence": divergence
+        }
+        
+        if vwap is not None:
+            result["vwap"] = round(vwap, 2)
+            
+        analysis_logger.info(f"Analyzed volume: trend={volume_trend}, spike={volume_spike}")
+        return result
+        
+    except Exception as e:
+        analysis_logger.error(f"Error analyzing volume: {e}")
+        return None
+
+def extract_price_summary(data):
+    """
+    Extract key price summary data from the bars data.
+    
+    Args:
+        data (dict): Data dictionary with 'bars' key containing price data
+    
+    Returns:
+        dict: Price summary information
+    """
+    try:
+        # Handle different input formats
+        if isinstance(data, dict) and 'bars' in data:
+            bars = data['bars']
+        elif isinstance(data, list):
+            bars = data
+        else:
+            analysis_logger.warning("Invalid data format for price summary extraction")
+            return {}
+            
+        if not bars:
+            return {}
+            
+        # Extract key data points
+        latest = bars[-1]
+        first = bars[0]
+        high_of_period = max(candle['h'] for candle in bars)
+        low_of_period = min(candle['l'] for candle in bars)
+        
+        return {
+            "start_time": first['t'],
+            "end_time": latest['t'],
+            "open_price": first['o'],
+            "current_price": latest['c'],
+            "high_of_period": high_of_period,
+            "low_of_period": low_of_period,
+            "price_change": round(latest['c'] - first['o'], 2),
+            "price_change_percent": round((latest['c'] - first['o']) / first['o'] * 100, 2),
+            "current_volume": latest['v'],
+            "data_points_analyzed": len(bars)
+        }
+    except Exception as e:
+        analysis_logger.error(f"Error extracting price summary: {e}")
+        return {}
+
+def generate_overall_summary(data, trend_analysis, breakouts=None, focus="medium_term"):
+    """
+    Generate an overall summary of the market analysis.
+    
+    Args:
+        data (dict): Data dictionary with 'bars' key containing price data
+        trend_analysis (dict): Trend analysis information
+        breakouts (dict): Breakout information
+        focus (str): 'short_term', 'medium_term', or 'long_term'
+        
+    Returns:
+        str: Overall summary
+    """
+    try:
+        # Handle different input formats
+        if isinstance(data, dict) and 'bars' in data:
+            bars = data['bars']
+            symbol = data.get('symbol', 'The asset')
+        elif isinstance(data, list):
+            bars = data
+            symbol = "The asset"
+        else:
+            analysis_logger.warning("Invalid data format for summary generation")
+            return "Insufficient data for analysis."
+            
+        if not bars:
+            return "Insufficient data for analysis."
+        
+        # Get trend information
+        trend_direction = trend_analysis.get('direction', 'unknown')
+        bullish_signals = len([s for s in trend_analysis.get('signals', []) if "bullish" in s.lower()])
+        bearish_signals = len([s for s in trend_analysis.get('signals', []) if "bearish" in s.lower()])
+        
+        # Start building the summary
+        summary = f"{symbol} price is in a {trend_direction.lower()} with {bullish_signals} bullish and {bearish_signals} bearish signals. "
+        
+        # Add RSI information if available
+        latest = bars[-1]
+        if 'rsi' in latest:
+            rsi = latest['rsi']
+            if rsi > 70:
+                summary += f"RSI is overbought at {rsi:.1f}. "
+            elif rsi < 30:
+                summary += f"RSI is oversold at {rsi:.1f}. "
+            else:
+                summary += f"RSI is neutral at {rsi:.1f}. "
+        
+        # Add price change information
+        first = bars[0]
+        price_change = ((latest['c'] - first['c']) / first['c']) * 100
+        if price_change > 0:
+            summary += f"Price has increased by {price_change:.2f}% over the analyzed period. "
+        else:
+            summary += f"Price has decreased by {abs(price_change):.2f}% over the analyzed period. "
+        
+        # Add breakout information
+        if breakouts:
+            if "resistance_break" in breakouts:
+                level = breakouts["resistance_break"]["level"]
+                strength = breakouts["resistance_break"]["strength"].lower()
+                summary += f"Price has shown a {strength} breakout above the {level} resistance level. "
+            
+            if "support_break" in breakouts:
+                level = breakouts["support_break"]["level"]
+                strength = breakouts["support_break"]["strength"].lower()
+                summary += f"Price has shown a {strength} breakdown below the {level} support level. "
+        
+        # Add time-frame specific insights
+        if focus == "short_term":
+            if 'macd' in latest and 'macd_signal' in latest:
+                if latest['macd'] > latest['macd_signal']:
+                    summary += "Short-term momentum is positive with MACD above signal line. "
+                else:
+                    summary += "Short-term momentum is negative with MACD below signal line. "
+        
+        elif focus == "long_term":
+            if 'sma_200' in latest:
+                if latest['c'] > latest['sma_200']:
+                    summary += "Price remains above the 200-day moving average, maintaining the long-term uptrend. "
+                else:
+                    summary += "Price remains below the 200-day moving average, maintaining the long-term downtrend. "
+        
+        analysis_logger.info(f"Generated overall summary: {summary[:50]}...")
+        return summary
+        
+    except Exception as e:
+        analysis_logger.error(f"Error generating overall summary: {e}")
+        return "Error generating market summary."
