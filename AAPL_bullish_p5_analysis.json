@@ -1,0 +1,15 @@
+{
+  "symbol": "AAPL",
+  "total_bars": 333,
+  "patterns": {
+    "Bullish Engulfing": {
+      "occurrences": 22,
+      "success_rate": 59.09090909090909,
+      "avg_return": 0.059634627352494876,
+      "details": [
+        {
+          "date": "2025-03-11T14:05:00Z",
+          "pattern_price": 222.59,
+          "future_price": 222.29,
+          "return": -0.13477694415742456,
+          "success": 
