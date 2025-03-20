@@ -1,0 +1,83 @@
+{
+  "symbol": "AAPL",
+  "total_bars": 333,
+  "patterns": {
+    "RSI_Overbought_Reversal": {
+      "occurrences": 1,
+      "success_rate": 100.0,
+      "avg_return": -0.6718611486959484,
+      "details": [
+        {
+          "date": "2025-03-17T13:40:00Z",
+          "pattern_price": 214.33,
+          "future_price": 212.89,
+          "return": -0.6718611486959484,
+          "success": true
+        }
+      ]
+    },
+    "Death_Cross_SMA": {
+      "occurrences": 2,
+      "success_rate": 50.0,
+      "avg_return": 0.1978160956231546,
+      "details": [
+        {
+          "date": "2025-03-11T17:40:00Z",
+          "pattern_price": 218.88,
+          "future_price": 220.24,
+          "return": 0.6213450292397723,
+          "success": false
+        },
+        {
+          "date": "2025-03-12T14:50:00Z",
+          "pattern_price": 217.09,
+          "future_price": 216.6,
+          "return": -0.22571283799346312,
+          "success": true
+        }
+      ]
+    },
+    "Bollinger_Band_Breakdown": {
+      "occurrences": 5,
+      "success_rate": 60.0,
+      "avg_return": 0.1909717394873613,
+      "details": [
+        {
+          "date": "2025-03-11T18:15:00Z",
+          "pattern_price": 220.4,
+          "future_price": 222.96,
+          "return": 1.161524500907442,
+          "success": false
+        },
+        {
+          "date": "2025-03-11T18:25:00Z",
+          "pattern_price": 220.54,
+          "future_price": 221.91,
+          "return": 0.6212025029473133,
+          "success": false
+        },
+        {
+          "date": "2025-03-13T18:30:00Z",
+          "pattern_price": 212.07,
+          "future_price": 211.1,
+          "return": -0.4573961427830428,
+          "success": true
+        },
+        {
+          "date": "2025-03-14T15:45:00Z",
+          "pattern_price": 213.24,
+          "future_price": 212.56,
+          "return": -0.31888951416244926,
+          "success": true
+        },
+        {
+          "date": "2025-03-17T13:45:00Z",
+          "pattern_price": 213.25,
+          "future_price": 213.14,
+          "return": -0.051582649472456575,
+          "success": true
+        }
+      ]
+    }
+  }
+}
