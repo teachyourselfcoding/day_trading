@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Backtest utility for technical indicators on historical data.
-This module validates whether indicators correctly identify patterns
-on historical data where outcomes are known.
+This module uses existing src.analysis modules to validate indicator reliability.
 """
 import os
 import argparse
@@ -11,11 +10,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
+import glob
 
 # Import existing project modules
 from src.data.yahoo_fetcher import fetch_yahoo_data
-from src.analysis.technical import calculate_technical_indicators
-from src.analysis.patterns import detect_candlestick_patterns, analyze_trend
+from src.analysis.technical import calculate_technical_indicators, extract_price_summary
+from src.analysis.patterns import detect_candlestick_patterns, analyze_trend, analyze_support_resistance
 from src.utils.logger import main_logger
 from src.utils.config import RAW_DATA_DIR, OUTPUTS_DIR, PROCESSED_DATA_DIR
 from src.utils.file_utils import create_directories, save_to_json
@@ -50,7 +50,6 @@ def load_historical_data(symbol=None, use_existing=True):
             
             # Handle case where directory might not exist yet
             if os.path.exists(RAW_DATA_DIR):
-                import glob
                 files = glob.glob(pattern)
             
             if files:
@@ -76,7 +75,6 @@ def load_historical_data(symbol=None, use_existing=True):
     else:
         # Load all available data files or default symbols
         if use_existing and os.path.exists(RAW_DATA_DIR):
-            import glob
             # Get all json files in the raw data directory
             files = glob.glob(os.path.join(RAW_DATA_DIR, "*.json"))
             
@@ -113,113 +111,39 @@ def load_historical_data(symbol=None, use_existing=True):
     return data_dict
 
 # =====================================================================
-# PATTERN DETECTION FUNCTIONS
+# PATTERN ANALYSIS FUNCTIONS
 # =====================================================================
 
-def identify_patterns(data, pattern_type="bullish", threshold_periods=10):
+def prepare_data_for_backtest(data):
     """
-    Identify bullish or bearish patterns in the historical data and check 
-    if they led to price movements in the expected direction.
+    Process data with all technical indicators for backtesting.
     
     Args:
-        data (dict): Data dictionary with 'bars' key containing price data
-        pattern_type (str): "bullish" or "bearish" to determine pattern type
-        threshold_periods (int): Number of periods to check for price movement
+        data (dict): Raw price data
         
     Returns:
-        dict: Analysis of patterns and their success rates
+        dict: Processed data with all indicators
     """
-    if not data or 'bars' not in data or not data['bars']:
-        return None
-    
-    symbol = data.get('symbol', 'Unknown')
-    main_logger.info(f"Analyzing {pattern_type} patterns for {symbol}...")
-    
-    # Calculate indicators first using existing project module
+    # Calculate technical indicators using the existing module
     data_with_indicators = calculate_technical_indicators(data)
-    
-    # Convert to DataFrame for easier analysis
-    df = pd.DataFrame(data_with_indicators['bars'])
-    
-    # Make sure columns are numeric
-    for col in ['o', 'h', 'l', 'c', 'v']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-    
-    # Dictionary to store patterns and their success rates
-    pattern_analysis = {
-        'symbol': symbol,
-        'total_bars': len(df),
-        'patterns': {}
-    }
-    
-    # Dictionary of patterns to check
-    pattern_types = {
-        'bullish': [
-            'bullish_engulfing', 'hammer', 'morning_star', 'three_white_soldiers',
-            'bullish_harami', 'piercing', 'bullish_doji_star', 'dragonfly_doji'
-        ],
-        'bearish': [
-            'bearish_engulfing', 'hanging_man', 'evening_star', 'three_black_crows',
-            'bearish_harami', 'dark_cloud_cover', 'shooting_star', 'gravestone_doji'
-        ]
-    }
-    
-    # Get patterns using patterns module or retrieve from indicators
-    # First check if patterns were already detected
-    pattern_flags = {}
-    
-    for pattern in pattern_types[pattern_type]:
-        if pattern in df.columns:
-            # Pattern data already exists in DataFrame
-            pattern_flags[pattern] = df[pattern].values
-        else:
-            # Mark pattern not found
-            pattern_flags[pattern] = np.zeros(len(df))
-            main_logger.debug(f"Pattern {pattern} not found in data")
-    
-    # Indicator combinations to check (like RSI oversold, MACD crossing, etc.)
-    if pattern_type == "bullish":
-        indicator_signals = analyze_bullish_indicator_signals(df)
-    else:
-        indicator_signals = analyze_bearish_indicator_signals(df)
-    
-    # Combine pattern and indicator analysis
-    for name, signal_array in pattern_flags.items():
-        occurrences = analyze_pattern_performance(
-            df, signal_array, name, threshold_periods, 
-            expected_direction=(pattern_type == "bullish")
-        )
-        
-        if occurrences:
-            pattern_analysis['patterns'][name] = occurrences
-    
-    # Add indicator signals to the patterns dictionary
-    for name, signal_info in indicator_signals.items():
-        if signal_info['occurrences']:
-            pattern_analysis['patterns'][name] = signal_info
-    
-    return pattern_analysis
+    return data_with_indicators
 
-def analyze_pattern_performance(df, pattern_array, pattern_name, threshold_periods, expected_direction=True):
+def analyze_pattern_performance(df, pattern_indices, pattern_name, threshold_periods, expected_direction=True):
     """
-    Analyze the performance of a detected pattern by checking future price movement.
+    Analyze how well a pattern predicted future price movement.
     
     Args:
-        df (DataFrame): DataFrame with price data
-        pattern_array (ndarray): Array indicating where pattern was detected
+        df (pd.DataFrame): DataFrame with price data
+        pattern_indices (list): Indices where pattern occurred
         pattern_name (str): Name of the pattern
-        threshold_periods (int): How many periods forward to check
-        expected_direction (bool): True if expecting upward movement, False for downward
+        threshold_periods (int): Number of periods to check forward
+        expected_direction (bool): True for bullish (expecting price rise)
         
     Returns:
-        dict: Performance analysis of the pattern
+        dict: Performance metrics for the pattern
     """
-    # Find pattern occurrences (non-zero values)
-    pattern_indices = np.where(pattern_array > 0)[0]
-    
-    # If no occurrences, return None
-    if len(pattern_indices) == 0:
+    # Skip if no instances found
+    if not pattern_indices:
         return None
     
     # Track pattern performance
@@ -239,7 +163,7 @@ def analyze_pattern_performance(df, pattern_array, pattern_name, threshold_perio
         # Calculate return
         price_return = (future_price - pattern_price) / pattern_price * 100
         
-        # Determine if pattern was successful based on expected direction
+        # Determine if pattern led to expected outcome
         if expected_direction:  # Bullish pattern
             success = price_return > 0
         else:  # Bearish pattern
@@ -252,11 +176,11 @@ def analyze_pattern_performance(df, pattern_array, pattern_name, threshold_perio
         
         # Record this occurrence
         occurrences.append({
-            'date': df['t'].iloc[idx],
+            'date': df['t'].iloc[idx] if 't' in df.columns else str(idx),
             'pattern_price': float(pattern_price),
             'future_price': float(future_price),
             'return': float(price_return),
-            'success': bool(success)
+            'success': bool(success)  # Ensure it's a Python bool
         })
     
     # Calculate statistics
@@ -276,220 +200,240 @@ def analyze_pattern_performance(df, pattern_array, pattern_name, threshold_perio
     
     return None
 
-def analyze_indicator_signal(df, condition, confirmation, bullish=True, threshold_periods=10):
+def identify_bullish_patterns(data, threshold_periods=10):
     """
-    Generic function to analyze indicator signals.
+    Identify bullish patterns in the historical data and check if they led to price increases.
     
     Args:
-        df (DataFrame): DataFrame with price and indicator data
-        condition (function): Function to check if the row meets the condition. Now expects (i, row)
-        confirmation (function): Function to check for confirmation in next bar. Expects (i, df)
-        bullish (bool): If True, expect price to rise after signal
-        threshold_periods (int): How many periods to check for price movement
-    
-    Returns:
-        dict: Analysis results
-    """
-    occurrences = []
-    success_count = 0
-    total_return = 0
-    
-    for i in range(len(df) - threshold_periods):
-        row = df.iloc[i].to_dict()
-        
-        try:
-            # Check if this row meets the condition
-            if condition(i, row):
-                # Check if we have confirmation
-                if confirmation(i, df):
-                    # Calculate performance
-                    pattern_price = df['c'].iloc[i+1]  # Entry on confirmation bar
-                    future_price = df['c'].iloc[i+1+threshold_periods]
-                    
-                    # Calculate price return
-                    price_return = (future_price - pattern_price) / pattern_price * 100
-                    
-                    # Determine success based on expected direction
-                    success = price_return > 0 if bullish else price_return < 0
-                    if success:
-                        success_count += 1
-                    
-                    total_return += price_return
-                    
-                    # Record this occurrence
-                    occurrences.append({
-                        'date': df['t'].iloc[i+1],
-                        'pattern_price': float(pattern_price),
-                        'future_price': float(future_price),
-                        'return': float(price_return),
-                        'success': bool(success)
-                    })
-        except (KeyError, IndexError) as e:
-            # Skip if required fields are missing
-            pass
-    
-    # Calculate statistics
-    if occurrences:
-        success_rate = (success_count / len(occurrences)) * 100
-        avg_return = total_return / len(occurrences)
-        
-        main_logger.info(f"  Pattern: {len(occurrences)} occurrences, {success_rate:.1f}% success, {avg_return:.2f}% avg return")
-        
-        return {
-            'occurrences': len(occurrences),
-            'success_rate': float(success_rate),
-            'avg_return': float(avg_return),
-            'details': occurrences
-        }
-    
-    return {'occurrences': 0, 'success_rate': 0, 'avg_return': 0, 'details': []}
-
-def analyze_bullish_indicator_signals(df):
-    """
-    Analyze bullish signals from technical indicators.
-    
-    Args:
-        df (DataFrame): DataFrame with price and indicator data
+        data (dict): Data with technical indicators
+        threshold_periods (int): Number of periods to check after pattern
         
     Returns:
-        dict: Dictionary of indicator signals and their details
+        dict: Analysis of bullish patterns and their success rates
     """
-    signals = {}
+    if not data or 'bars' not in data or not data['bars']:
+        return None
     
-    # RSI Oversold Reversal
+    symbol = data.get('symbol', 'Unknown')
+    main_logger.info(f"Analyzing bullish patterns for {symbol}...")
+    
+    # Convert to DataFrame for easier analysis
+    df = pd.DataFrame(data['bars'])
+    
+    # Make sure columns are numeric
+    for col in ['o', 'h', 'l', 'c', 'v']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+    
+    # Use detect_candlestick_patterns from the existing module
+    # This requires original data format, not dataframe
+    patterns_detected = detect_candlestick_patterns(data['bars'])
+    
+    # We'll also analyze technical indicator signals
+    pattern_analysis = {
+        'symbol': symbol,
+        'total_bars': len(df),
+        'patterns': {}
+    }
+    
+    # Extract bullish patterns from detected patterns
+    bullish_patterns = {}
+    for pattern_name, description in patterns_detected.items():
+        if 'bullish' in pattern_name.lower():
+            # Find where this pattern was detected
+            # This is an approximation since we don't have the exact indices
+            pattern_indices = []
+            # Use the most recent 2/3 of data for pattern detection to match with TA-Lib lookback
+            start_idx = len(df) // 3
+            pattern_str = pattern_name.lower()
+            
+            # Look for specific bullish patterns in the data
+            # Simplified detection based on general pattern characteristics
+            if 'engulfing' in pattern_str:
+                for i in range(start_idx+1, len(df)):
+                    if (df['c'].iloc[i] > df['o'].iloc[i] and  # Bullish candle
+                        df['c'].iloc[i-1] < df['o'].iloc[i-1] and  # Previous bearish candle
+                        df['c'].iloc[i] > df['o'].iloc[i-1] and  # Current close > prev open
+                        df['o'].iloc[i] < df['c'].iloc[i-1]):  # Current open < prev close
+                        pattern_indices.append(i)
+            
+            elif 'hammer' in pattern_str:
+                for i in range(start_idx, len(df)):
+                    body_size = abs(df['c'].iloc[i] - df['o'].iloc[i])
+                    lower_shadow = min(df['c'].iloc[i], df['o'].iloc[i]) - df['l'].iloc[i]
+                    if (lower_shadow > 2 * body_size and  # Long lower shadow
+                        body_size > 0):  # Non-zero body
+                        pattern_indices.append(i)
+            
+            # Analyze pattern performance
+            performance = analyze_pattern_performance(df, pattern_indices, pattern_name, threshold_periods, True)
+            if performance:
+                bullish_patterns[pattern_name] = performance
+    
+    # Add technical indicator signals analysis
+    # RSI Oversold
     if 'rsi' in df.columns:
-        signals['RSI_Oversold_Reversal'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: row['rsi'] < 30 if 'rsi' in row else False,
-            confirmation=lambda i, df: (
-                i+1 < len(df) and 
-                'rsi' in df.columns and 
-                df['rsi'].iloc[i+1] > df['rsi'].iloc[i] and 
-                df['c'].iloc[i+1] > df['c'].iloc[i]
-            ),
-            bullish=True
-        )
+        rsi_oversold_indices = list(np.where(df['rsi'] < 30)[0])
+        rsi_analysis = analyze_pattern_performance(df, rsi_oversold_indices, "RSI Oversold", threshold_periods, True)
+        if rsi_analysis:
+            bullish_patterns["RSI_Oversold"] = rsi_analysis
     
-    # MACD Bullish Crossover
-    if 'macd' in df.columns and 'macd_signal' in df.columns:
-        signals['MACD_Bullish_Crossover'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: (
-                'macd' in row and 'macd_signal' in row and
-                row['macd'] < row['macd_signal'] and
-                'macd_hist' in row and row['macd_hist'] > 0
-            ),
-            confirmation=lambda i, df: (
-                i+1 < len(df) and
-                'macd' in df.columns and 'macd_signal' in df.columns and
-                df['macd'].iloc[i+1] > df['macd_signal'].iloc[i+1]
-            ),
-            bullish=True
-        )
+    # MACD Bullish Cross
+    if all(col in df.columns for col in ['macd', 'macd_signal']):
+        macd_cross_indices = []
+        for i in range(1, len(df)):
+            if (df['macd'].iloc[i-1] < df['macd_signal'].iloc[i-1] and 
+                df['macd'].iloc[i] > df['macd_signal'].iloc[i]):
+                macd_cross_indices.append(i)
+        
+        macd_analysis = analyze_pattern_performance(df, macd_cross_indices, "MACD Bullish Cross", threshold_periods, True)
+        if macd_analysis:
+            bullish_patterns["MACD_Bullish_Cross"] = macd_analysis
     
     # Golden Cross (SMA)
-    if 'sma_20' in df.columns and 'sma_50' in df.columns:
-        signals['Golden_Cross_SMA'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: (
-                row['sma_20'] > row['sma_50'] and i > 0 and 
-                df['sma_20'].iloc[i - 1] <= df['sma_50'].iloc[i - 1]
-            ),
-            confirmation=lambda i, df: (
-                i + 1 < len(df) and 'c' in df.columns and
-                df['c'].iloc[i + 1] > df['sma_20'].iloc[i + 1]
-            ),
-            bullish=True
-        )
-
-    # Bollinger Band Bounce
-    if 'bb_lower' in df.columns:
-        signals['Bollinger_Band_Bounce'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: 'c' in row and 'bb_lower' in row and row['c'] <= row['bb_lower'],
-            confirmation=lambda i, df: (
-                i+1 < len(df) and 'c' in df.columns and 'bb_lower' in df.columns and
-                df['c'].iloc[i+1] > df['c'].iloc[i] and
-                df['c'].iloc[i+1] > df['bb_lower'].iloc[i+1]
-            ),
-            bullish=True
-        )
+    if all(col in df.columns for col in ['sma_50', 'sma_200']):
+        golden_cross_indices = []
+        for i in range(1, len(df)):
+            if (df['sma_50'].iloc[i-1] <= df['sma_200'].iloc[i-1] and 
+                df['sma_50'].iloc[i] > df['sma_200'].iloc[i]):
+                golden_cross_indices.append(i)
+        
+        gc_analysis = analyze_pattern_performance(df, golden_cross_indices, "Golden Cross", threshold_periods, True)
+        if gc_analysis:
+            bullish_patterns["Golden_Cross"] = gc_analysis
     
-    return signals
+    # Bollinger Band Bounce
+    if all(col in df.columns for col in ['bb_lower', 'c']):
+        bb_bounce_indices = []
+        for i in range(1, len(df)):
+            if (df['c'].iloc[i-1] <= df['bb_lower'].iloc[i-1] and 
+                df['c'].iloc[i] > df['bb_lower'].iloc[i]):
+                bb_bounce_indices.append(i)
+        
+        bb_analysis = analyze_pattern_performance(df, bb_bounce_indices, "BB Bounce", threshold_periods, True)
+        if bb_analysis:
+            bullish_patterns["BB_Lower_Bounce"] = bb_analysis
+    
+    # Add all patterns to the analysis
+    pattern_analysis['patterns'] = bullish_patterns
+    
+    return pattern_analysis
 
-def analyze_bearish_indicator_signals(df):
+def identify_bearish_patterns(data, threshold_periods=10):
     """
-    Analyze bearish signals from technical indicators.
+    Identify bearish patterns in the historical data and check if they led to price decreases.
     
     Args:
-        df (DataFrame): DataFrame with price and indicator data
+        data (dict): Data with technical indicators
+        threshold_periods (int): Number of periods to check after pattern
         
     Returns:
-        dict: Dictionary of indicator signals and their details
+        dict: Analysis of bearish patterns and their success rates
     """
-    signals = {}
+    if not data or 'bars' not in data or not data['bars']:
+        return None
     
-    # RSI Overbought Reversal
+    symbol = data.get('symbol', 'Unknown')
+    main_logger.info(f"Analyzing bearish patterns for {symbol}...")
+    
+    # Convert to DataFrame for easier analysis
+    df = pd.DataFrame(data['bars'])
+    
+    # Make sure columns are numeric
+    for col in ['o', 'h', 'l', 'c', 'v']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col])
+    
+    # Use detect_candlestick_patterns from the existing module
+    patterns_detected = detect_candlestick_patterns(data['bars'])
+    
+    # We'll also analyze technical indicator signals
+    pattern_analysis = {
+        'symbol': symbol,
+        'total_bars': len(df),
+        'patterns': {}
+    }
+    
+    # Extract bearish patterns from detected patterns
+    bearish_patterns = {}
+    for pattern_name, description in patterns_detected.items():
+        if 'bearish' in pattern_name.lower():
+            # Find where this pattern was detected
+            pattern_indices = []
+            # Use the most recent 2/3 of data for pattern detection
+            start_idx = len(df) // 3
+            pattern_str = pattern_name.lower()
+            
+            # Look for specific bearish patterns in the data
+            if 'engulfing' in pattern_str:
+                for i in range(start_idx+1, len(df)):
+                    if (df['c'].iloc[i] < df['o'].iloc[i] and  # Bearish candle
+                        df['c'].iloc[i-1] > df['o'].iloc[i-1] and  # Previous bullish candle
+                        df['o'].iloc[i] > df['c'].iloc[i-1] and  # Current open > prev close
+                        df['c'].iloc[i] < df['o'].iloc[i-1]):  # Current close < prev open
+                        pattern_indices.append(i)
+            
+            elif 'evening star' in pattern_str:
+                for i in range(start_idx+2, len(df)):
+                    if (df['c'].iloc[i-2] > df['o'].iloc[i-2] and  # First day bullish
+                        abs(df['c'].iloc[i-1] - df['o'].iloc[i-1]) < 0.3 * abs(df['c'].iloc[i-2] - df['o'].iloc[i-2]) and  # Second day small body
+                        df['c'].iloc[i] < df['o'].iloc[i] and  # Third day bearish
+                        df['c'].iloc[i] < (df['o'].iloc[i-2] + df['c'].iloc[i-2])/2):  # Third day closes below midpoint of first day
+                        pattern_indices.append(i)
+            
+            # Analyze pattern performance
+            performance = analyze_pattern_performance(df, pattern_indices, pattern_name, threshold_periods, False)
+            if performance:
+                bearish_patterns[pattern_name] = performance
+    
+    # Add technical indicator signals analysis
+    # RSI Overbought
     if 'rsi' in df.columns:
-        signals['RSI_Overbought_Reversal'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: row['rsi'] > 70 if 'rsi' in row else False,
-            confirmation=lambda i, df: (
-                i+1 < len(df) and 
-                'rsi' in df.columns and 
-                df['rsi'].iloc[i+1] < df['rsi'].iloc[i] and 
-                df['c'].iloc[i+1] < df['c'].iloc[i]
-            ),
-            bullish=False
-        )
+        rsi_overbought_indices = list(np.where(df['rsi'] > 70)[0])
+        rsi_analysis = analyze_pattern_performance(df, rsi_overbought_indices, "RSI Overbought", threshold_periods, False)
+        if rsi_analysis:
+            bearish_patterns["RSI_Overbought"] = rsi_analysis
     
-    # MACD Bearish Crossover
-    if 'macd' in df.columns and 'macd_signal' in df.columns:
-        signals['MACD_Bearish_Crossover'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: (
-                'macd' in row and 'macd_signal' in row and
-                row['macd'] > row['macd_signal'] and
-                'macd_hist' in row and row['macd_hist'] < 0
-            ),
-            confirmation=lambda i, df: (
-                i+1 < len(df) and
-                'macd' in df.columns and 'macd_signal' in df.columns and
-                df['macd'].iloc[i+1] < df['macd_signal'].iloc[i+1]
-            ),
-            bullish=False
-        )
+    # MACD Bearish Cross
+    if all(col in df.columns for col in ['macd', 'macd_signal']):
+        macd_cross_indices = []
+        for i in range(1, len(df)):
+            if (df['macd'].iloc[i-1] > df['macd_signal'].iloc[i-1] and 
+                df['macd'].iloc[i] < df['macd_signal'].iloc[i]):
+                macd_cross_indices.append(i)
+        
+        macd_analysis = analyze_pattern_performance(df, macd_cross_indices, "MACD Bearish Cross", threshold_periods, False)
+        if macd_analysis:
+            bearish_patterns["MACD_Bearish_Cross"] = macd_analysis
     
     # Death Cross (SMA)
-    if 'sma_20' in df.columns and 'sma_50' in df.columns:
-        signals['Death_Cross_SMA'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: (
-                'sma_20' in row and 'sma_50' in row and
-                row['sma_20'] < row['sma_50'] and
-                i > 0 and df['sma_20'].iloc[i-1] >= df['sma_50'].iloc[i-1]
-            ),
-            confirmation=lambda i, df: (
-                i+1 < len(df) and 'c' in df.columns and 'sma_20' in df.columns and
-                df['c'].iloc[i+1] < df['sma_20'].iloc[i+1]
-            ),
-            bullish=False
-        )
+    if all(col in df.columns for col in ['sma_50', 'sma_200']):
+        death_cross_indices = []
+        for i in range(1, len(df)):
+            if (df['sma_50'].iloc[i-1] >= df['sma_200'].iloc[i-1] and 
+                df['sma_50'].iloc[i] < df['sma_200'].iloc[i]):
+                death_cross_indices.append(i)
+        
+        dc_analysis = analyze_pattern_performance(df, death_cross_indices, "Death Cross", threshold_periods, False)
+        if dc_analysis:
+            bearish_patterns["Death_Cross"] = dc_analysis
     
-    # Bollinger Band Breakdown
-    if 'bb_upper' in df.columns:
-        signals['Bollinger_Band_Breakdown'] = analyze_indicator_signal(
-            df,
-            condition=lambda i, row: 'c' in row and 'bb_upper' in row and row['c'] >= row['bb_upper'],
-            confirmation=lambda i, df: (
-                i+1 < len(df) and 'c' in df.columns and 'bb_upper' in df.columns and
-                df['c'].iloc[i+1] < df['c'].iloc[i] and
-                df['c'].iloc[i+1] < df['bb_upper'].iloc[i+1]
-            ),
-            bullish=False
-        )
+    # Bollinger Band Break
+    if all(col in df.columns for col in ['bb_upper', 'c']):
+        bb_break_indices = []
+        for i in range(1, len(df)):
+            if (df['c'].iloc[i-1] >= df['bb_upper'].iloc[i-1] and 
+                df['c'].iloc[i] < df['bb_upper'].iloc[i]):
+                bb_break_indices.append(i)
+        
+        bb_analysis = analyze_pattern_performance(df, bb_break_indices, "BB Upper Break", threshold_periods, False)
+        if bb_analysis:
+            bearish_patterns["BB_Upper_Break"] = bb_analysis
     
-    return signals
+    # Add all patterns to the analysis
+    pattern_analysis['patterns'] = bearish_patterns
+    
+    return pattern_analysis
 
 # =====================================================================
 # VISUALIZATION FUNCTIONS
@@ -654,12 +598,15 @@ def run_backtest(symbols=None, periods_to_check=None, use_existing_data=True, ou
     for symbol, data in data_dict.items():
         main_logger.info(f"\nBacktesting {symbol}...")
         
+        # Process data with technical indicators
+        processed_data = prepare_data_for_backtest(data)
+        
         # For each period to check
         for period in periods_to_check:
             main_logger.info(f"\nAnalyzing with {period}-day forward period:")
             
             # Analyze bullish patterns
-            bullish_analysis = identify_patterns(data, pattern_type="bullish", threshold_periods=period)
+            bullish_analysis = identify_bullish_patterns(processed_data, threshold_periods=period)
             if bullish_analysis:
                 # Save to file
                 save_analysis_results(bullish_analysis, symbol, "bullish", period, output_dir)
@@ -668,7 +615,7 @@ def run_backtest(symbols=None, periods_to_check=None, use_existing_data=True, ou
                 visualize_pattern_effectiveness(bullish_analysis, "bullish", output_dir)
             
             # Analyze bearish patterns
-            bearish_analysis = identify_patterns(data, pattern_type="bearish", threshold_periods=period)
+            bearish_analysis = identify_bearish_patterns(processed_data, threshold_periods=period)
             if bearish_analysis:
                 # Save to file
                 save_analysis_results(bearish_analysis, symbol, "bearish", period, output_dir)
@@ -696,8 +643,8 @@ def main():
     
     args = parser.parse_args()
     
-    print("TA-Lib Backtest Utility")
-    print("======================\n")
+    print("Technical Analysis Backtest Utility")
+    print("==================================\n")
     
     # Run backtest
     run_backtest(

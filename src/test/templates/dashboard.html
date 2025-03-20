@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Signal Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Trading Signal Verification Dashboard</h1>
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Symbol Selection</div>
+                    <div class="card-body">
+                        <select id="symbolSelect" class="form-select mb-3">
+                            {% for symbol in symbols %}
+                            <option value="{{ symbol }}">{{ symbol }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="loadSymbolBtn" class="btn btn-primary">Load Data</button>
+                    </div>
+                </div>
+                <div class="card mt-3">
+                    <div class="card-header">Display Options</div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showVolume" checked>
+                            <label class="form-check-label" for="showVolume">Show Volume</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showSignals" checked>
+                            <label class="form-check-label" for="showSignals">Show Signals</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showSMA20">
+                            <label class="form-check-label" for="showSMA20">SMA 20</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showSMA50">
+                            <label class="form-check-label" for="showSMA50">SMA 50</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showRSI">
+                            <label class="form-check-label" for="showRSI">RSI</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showMACD">
+                            <label class="form-check-label" for="showMACD">MACD</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div id="chartContainer">
+                    <div id="priceChart" style="height: 500px;"></div>
+                    <div id="rsiChart" style="height: 200px; display: none;"></div>
+                    <div id="macdChart" style="height: 200px; display: none;"></div>
+                </div>
+                <div id="loadingMessage" class="text-center mt-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading and analyzing data...</p>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Signal Summary</div>
+                    <div class="card-body">
+                        <div id="signalSummary">
+                            <p>Load a symbol to view signal summary.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Pattern Summary</div>
+                    <div class="card-body">
+                        <div id="patternSummary">
+                            <p>Load a symbol to view pattern summary.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadSymbolBtn = document.getElementById('loadSymbolBtn');
+            const symbolSelect = document.getElementById('symbolSelect');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const chartContainer = document.getElementById('chartContainer');
+            
+            if (loadSymbolBtn) {
+                loadSymbolBtn.addEventListener('click', function() {
+                    const symbol = symbolSelect.value;
+                    if (!symbol) return;
+                    
+                    // Show loading message
+                    loadingMessage.style.display = 'block';
+                    chartContainer.style.opacity = '0.5';
+                    
+                    // Fetch data from the server
+                    fetch(`/api/data/${symbol}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Hide loading message
+                            loadingMessage.style.display = 'none';
+                            chartContainer.style.opacity = '1';
+                            
+                            // Create charts
+                            createPriceChart(data);
+                            updateSummaries(data);
+                            
+                            // Set up indicator toggles
+                            document.getElementById('showRSI').addEventListener('change', function() {
+                                document.getElementById('rsiChart').style.display = this.checked ? 'block' : 'none';
+                                if (this.checked) createRSIChart(data);
+                            });
+                            
+                            document.getElementById('showMACD').addEventListener('change', function() {
+                                document.getElementById('macdChart').style.display = this.checked ? 'block' : 'none';
+                                if (this.checked) createMACDChart(data);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error loading data:', error);
+                            loadingMessage.style.display = 'none';
+                            chartContainer.style.opacity = '1';
+                            alert('Error loading data: ' + error.message);
+                        });
+                });
+            }
+            
+            // Create price chart function
+            function createPriceChart(data) {
+                const showSMA20 = document.getElementById('showSMA20').checked;
+                const showSMA50 = document.getElementById('showSMA50').checked;
+                const showVolume = document.getElementById('showVolume').checked;
+                const showSignals = document.getElementById('showSignals').checked;
+                
+                // Prepare candlestick trace
+                const ohlc = {
+                    x: data.datetime,
+                    open: data.price.open,
+                    high: data.price.high,
+                    low: data.price.low,
+                    close: data.price.close,
+                    type: 'candlestick',
+                    name: data.symbol
+                };
+                
+                // Prepare traces array
+                const traces = [ohlc];
+                
+                // Add volume if requested
+                if (showVolume) {
+                    traces.push({
+                        x: data.datetime,
+                        y: data.price.volume,
+                        type: 'bar',
+                        name: 'Volume',
+                        marker: { color: 'rgba(100, 100, 100, 0.3)' },
+                        yaxis: 'y2'
+                    });
+                }
+                
+                // Add SMA traces if requested
+                if (showSMA20 && data.indicators.sma_20) {
+                    traces.push({
+                        x: data.datetime,
+                        y: data.indicators.sma_20,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'SMA 20',
+                        line: { color: 'blue', width: 1 }
+                    });
+                }
+                
+                if (showSMA50 && data.indicators.sma_50) {
+                    traces.push({
+                        x: data.datetime,
+                        y: data.indicators.sma_50,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'SMA 50',
+                        line: { color: 'green', width: 1 }
+                    });
+                }
+                
+                // Add signal markers if requested
+                if (showSignals && data.signals) {
+                    // Add bullish signals
+                    if (data.signals.rsi_oversold) {
+                        const signalIndices = [];
+                        for (let i = 0; i < data.signals.rsi_oversold.length; i++) {
+                            if (data.signals.rsi_oversold[i] > 0) signalIndices.push(i);
+                        }
+                        
+                        if (signalIndices.length > 0) {
+                            const signalX = signalIndices.map(i => data.datetime[i]);
+                            const signalY = signalIndices.map(i => data.price.low[i] * 0.99);
+                            
+                            traces.push({
+                                x: signalX,
+                                y: signalY,
+                                mode: 'markers',
+                                type: 'scatter',
+                                name: 'RSI Oversold',
+                                marker: {
+                                    symbol: 'triangle-up',
+                                    size: 12,
+                                    color: 'green'
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Add bearish signals
+                    if (data.signals.rsi_overbought) {
+                        const signalIndices = [];
+                        for (let i = 0; i < data.signals.rsi_overbought.length; i++) {
+                            if (data.signals.rsi_overbought[i] > 0) signalIndices.push(i);
+                        }
+                        
+                        if (signalIndices.length > 0) {
+                            const signalX = signalIndices.map(i => data.datetime[i]);
+                            const signalY = signalIndices.map(i => data.price.high[i] * 1.01);
+                            
+                            traces.push({
+                                x: signalX,
+                                y: signalY,
+                                mode: 'markers',
+                                type: 'scatter',
+                                name: 'RSI Overbought',
+                                marker: {
+                                    symbol: 'triangle-down',
+                                    size: 12,
+                                    color: 'red'
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                // Define layout
+                const layout = {
+                    title: `${data.symbol} Price Chart`,
+                    dragmode: 'zoom',
+                    showlegend: true,
+                    xaxis: {
+                        rangeslider: { visible: false }
+                    },
+                    yaxis: {
+                        title: 'Price',
+                        autorange: true
+                    },
+                    yaxis2: {
+                        title: 'Volume',
+                        overlaying: 'y',
+                        side: 'right',
+                        showgrid: false
+                    }
+                };
+                
+                // Create the chart
+                Plotly.newPlot('priceChart', traces, layout);
+            }
+            
+            // Create RSI chart function
+            function createRSIChart(data) {
+                if (!data.indicators.rsi) return;
+                
+                const trace = {
+                    x: data.datetime,
+                    y: data.indicators.rsi,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'RSI',
+                    line: { color: 'purple', width: 1 }
+                };
+                
+                const layout = {
+                    title: 'RSI (14)',
+                    xaxis: {
+                        rangeslider: { visible: false }
+                    },
+                    yaxis: {
+                        title: 'RSI',
+                        range: [0, 100]
+                    },
+                    shapes: [
+                        {
+                            type: 'line',
+                            x0: data.datetime[0],
+                            x1: data.datetime[data.datetime.length - 1],
+                            y0: 70,
+                            y1: 70,
+                            line: {
+                                color: 'red',
+                                width: 1,
+                                dash: 'dash'
+                            }
+                        },
+                        {
+                            type: 'line',
+                            x0: data.datetime[0],
+                            x1: data.datetime[data.datetime.length - 1],
+                            y0: 30,
+                            y1: 30,
+                            line: {
+                                color: 'green',
+                                width: 1,
+                                dash: 'dash'
+                            }
+                        }
+                    ]
+                };
+                
+                Plotly.newPlot('rsiChart', [trace], layout);
+            }
+            
+            // Create MACD chart function
+            function createMACDChart(data) {
+                if (!data.indicators.macd || !data.indicators.macd_signal) return;
+                
+                const macdLine = {
+                    x: data.datetime,
+                    y: data.indicators.macd,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'MACD',
+                    line: { color: 'blue', width: 1 }
+                };
+                
+                const signalLine = {
+                    x: data.datetime,
+                    y: data.indicators.macd_signal,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Signal',
+                    line: { color: 'red', width: 1 }
+                };
+                
+                // Create histogram
+                const histColors = [];
+                for (let i = 0; i < data.indicators.macd_hist.length; i++) {
+                    histColors.push(data.indicators.macd_hist[i] >= 0 ? 'green' : 'red');
+                }
+                
+                const histogram = {
+                    x: data.datetime,
+                    y: data.indicators.macd_hist,
+                    type: 'bar',
+                    name: 'Histogram',
+                    marker: { color: histColors }
+                };
+                
+                const layout = {
+                    title: 'MACD',
+                    xaxis: {
+                        rangeslider: { visible: false }
+                    },
+                    yaxis: {
+                        title: 'MACD'
+                    }
+                };
+                
+                Plotly.newPlot('macdChart', [macdLine, signalLine, histogram], layout);
+            }
+            
+            // Update summary tables
+            function updateSummaries(data) {
+                // Update signal summary
+                let signalHtml = '<table class="table table-sm">';
+                signalHtml += '<thead><tr><th>Signal</th><th>Count</th></tr></thead>';
+                signalHtml += '<tbody>';
+                
+                let signalCounts = {};
+                if (data.signals) {
+                    for (const signalType in data.signals) {
+                        if (Array.isArray(data.signals[signalType])) {
+                            signalCounts[signalType] = data.signals[signalType].filter(val => val > 0).length;
+                        }
+                    }
+                }
+                
+                for (const signalType in signalCounts) {
+                    const displayName = signalType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    signalHtml += `<tr><td>${displayName}</td><td>${signalCounts[signalType]}</td></tr>`;
+                }
+                
+                signalHtml += '</tbody></table>';
+                document.getElementById('signalSummary').innerHTML = signalHtml;
+                
+                // Update pattern summary
+                let patternHtml = '<table class="table table-sm">';
+                patternHtml += '<thead><tr><th>Pattern</th><th>Count</th></tr></thead>';
+                patternHtml += '<tbody>';
+                
+                let bullishCounts = {};
+                let bearishCounts = {};
+                
+                if (data.patterns && data.patterns.bullish) {
+                    for (const pattern in data.patterns.bullish) {
+                        if (Array.isArray(data.patterns.bullish[pattern])) {
+                            bullishCounts[pattern] = data.patterns.bullish[pattern].filter(val => val > 0).length;
+                        }
+                    }
+                }
+                
+                if (data.patterns && data.patterns.bearish) {
+                    for (const pattern in data.patterns.bearish) {
+                        if (Array.isArray(data.patterns.bearish[pattern])) {
+                            bearishCounts[pattern] = data.patterns.bearish[pattern].filter(val => val > 0).length;
+                        }
+                    }
+                }
+                
+                patternHtml += '<tr class="table-success"><td colspan="2"><strong>Bullish Patterns</strong></td></tr>';
+                for (const pattern in bullishCounts) {
+                    const displayName = pattern.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    patternHtml += `<tr><td>${displayName}</td><td>${bullishCounts[pattern]}</td></tr>`;
+                }
+                
+                patternHtml += '<tr class="table-danger"><td colspan="2"><strong>Bearish Patterns</strong></td></tr>';
+                for (const pattern in bearishCounts) {
+                    const displayName = pattern.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    patternHtml += `<tr><td>${displayName}</td><td>${bearishCounts[pattern]}</td></tr>`;
+                }
+                
+                patternHtml += '</tbody></table>';
+                document.getElementById('patternSummary').innerHTML = patternHtml;
+            }
+        });
+    </script>
+</body>
+</html>
