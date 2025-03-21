@@ -1,9 +1,12 @@
+/* Enhanced Dashboard CSS */
 
+/* Base styles */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     padding-top: 10px;
 }
 
+/* Sidebar styles */
 .sidebar {
     position: fixed;
     top: 0;
@@ -39,16 +42,37 @@ body {
     text-transform: uppercase;
 }
 
+/* Accordion customization */
 .accordion-button:not(.collapsed) {
     background-color: #e7f1ff;
     color: #0d6efd;
 }
 
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(0,0,0,.125);
+}
+
+.accordion-body {
+    padding: 0.5rem 1.25rem;
+}
+
+/* Chart container styling */
 #chartContainer {
     width: 100%;
     overflow: hidden;
+    transition: opacity 0.3s ease;
 }
 
+/* Indicator chart styling */
+#rsiChart, #macdChart, #stochChart, #adxChart {
+    margin-top: 15px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    transition: height 0.3s ease;
+}
+
+/* Signal and pattern markers */
 .signal-indicator {
     position: absolute;
     z-index: 10;
@@ -64,6 +88,30 @@ body {
     font-size: 20px;
 }
 
+/* Toast styling */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+}
+
+.toast {
+    min-width: 200px;
+}
+
+/* Tooltip styling */
+.tooltip-custom {
+    max-width: 300px;
+    z-index: 1000;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding: 8px;
+    font-size: 12px;
+}
+
 .tooltip-inner {
     max-width: 200px;
     padding: 8px;
@@ -73,6 +121,7 @@ body {
     border-radius: 4px;
 }
 
+/* Summary table styling */
 .signal-summary-item {
     display: flex;
     justify-content: space-between;
@@ -93,16 +142,95 @@ body {
     color: red;
 }
 
-#rsiChart, #macdChart, #stochChart, #adxChart {
-    margin-top: 15px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
-}
-
 .table-success, .table-danger {
     font-weight: bold;
 }
 
 .table-sm td, .table-sm th {
     padding: 0.25rem 0.5rem;
+}
+
+/* Loading indicator */
+#loadingMessage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+/* Modal enhancements */
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Dashboard button styling */
+.btn-outline-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+/* Pattern and signal highlighting */
+.highlight {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Comparison table styling */
+.comparison-header {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+}
+
+/* Keyboard shortcut tooltip */
+.shortcut-tip {
+    font-size: 10px;
+    color: #6c757d;
+    margin-left: 5px;
+}
+
+/* Print-specific styles */
+@media print {
+    .sidebar, .btn-toolbar, .modal, .toast {
+        display: none !important;
+    }
+    
+    .col-md-9 {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+    
+    #chartContainer {
+        page-break-inside: avoid;
+    }
 }
